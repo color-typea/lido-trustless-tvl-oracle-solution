@@ -1,0 +1,65 @@
+[tool.poetry]
+name = "lido-trustless-tlv-solution"
+version = "0.1.0"
+description = ""
+authors = []
+license = "GPL 3.0"
+readme = ["README.md"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+lido-oracle = { path = "./modules/lido-oracle", develop = true }
+
+[tool.poetry.group.dev.dependencies]
+pylint = "^2.16.2"
+hypothesis = "^6.68.2"
+black = "^23.3.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+markers = [
+    "unit: tests with using mocks and don't make external requests",
+    "integration: tests with using providers",
+    "possible_integration: tests with using providers, but can be run using mocks",
+    "e2e: complex tests with using providers and real Ethereum network",
+]
+addopts = "-s --pdbcls pudb.debugger:Debugger"
+
+[tool.coverage.run]
+branch = true
+
+[tool.pylint.format]
+max-line-length = "120"
+
+[tool.pylint."messages control"]
+disable = [
+    # Disabled by default
+    "raw-checker-failed",
+    "bad-inline-option",
+    "locally-disabled",
+    "file-ignored",
+    "suppressed-message",
+    "useless-suppression",
+    "deprecated-pragma",
+    "use-symbolic-message-instead",
+    # Disabled by us
+    "missing-module-docstring",
+    "missing-class-docstring",
+    "missing-function-docstring",
+    "too-few-public-methods",
+    "too-many-instance-attributes",
+    "too-many-arguments",
+    "too-many-locals",
+    "invalid-envvar-default",
+]
+
+[tool.mypy]
+strict_equality = true
+mypy_path = "stubs"
+
+[tool.black]
+line-length = 120
+skip-string-normalization = true
