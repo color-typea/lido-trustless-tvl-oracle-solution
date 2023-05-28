@@ -1,4 +1,0 @@
-[submodule "modules/lido-oracle"]
-	path = modules/lido-oracle
-	url = https://github.com/color-typea/lido-oracle.git
-	branch = trustless_sanity_check
