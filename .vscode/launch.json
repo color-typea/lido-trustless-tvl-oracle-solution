@@ -1,0 +1,32 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+
+        {
+            "name": "Brownie: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "~/.cache/pypoetry/virtualenvs/lido-trustless-tlv-solution-AZj1zB2x-py3.10/bin/brownie",
+            "console": "integratedTerminal",
+            "args": [
+                "run",
+                "${file}"
+            ]
+        },
+        {
+            "name": "Brownie: e2e script",
+            "type": "python",
+            "request": "launch",
+            "program": "~/.cache/pypoetry/virtualenvs/lido-trustless-tlv-solution-AZj1zB2x-py3.10/bin/brownie",
+            "console": "integratedTerminal",
+            "args": [
+                "run",
+                "end_to_end"
+            ],
+            "justMyCode": false,
+        }
+    ]
+}
