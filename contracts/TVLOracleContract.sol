@@ -5,7 +5,6 @@ import "../interfaces/IVerifier.sol";
 import "../interfaces/ILidoStakingRouter.sol";
 import "../interfaces/ILidoLocator.sol";
 import "../interfaces/IBeaconBlockHashProvider.sol";
-import "./ZKLLVMVerifierAdapter.sol";
 
 
 contract TVLOracleContract {
@@ -95,8 +94,11 @@ contract TVLOracleContract {
     ) internal view returns (bool) {
         uint256[] memory init_params;
         int256[][] memory columns_rotations;
-        return (true);
-        //        zkllvmVerifier.verify(proof.zk_proof, init_params, columns_rotations, gate);
+        return zkllvmVerifier.verify(proof.zkProof, init_params, columns_rotations, gate);
+    }
+
+    function getLastReport() public view returns (OracleReport memory result) {
+        return (latestReport);
     }
 
     function _updateReport(OracleReport memory report) internal {
@@ -105,7 +107,9 @@ contract TVLOracleContract {
     }
 
     function _require(bool condition, OracleReport memory report, string memory reason) internal {
-        emit ReportRejected(report, reason);
-        require(false, reason);
+        if (!condition) {
+            emit ReportRejected(report, reason);
+            require(false, reason);
+        }
     }
 }
