@@ -8,7 +8,9 @@ readme = ["README.md"]
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.11"
-eth-brownie = "^1.19.3"
+# conflicts with ssz, but is installed separately via `pipx install eth-brownie` so just documenting usage/dependency
+#eth-brownie = "^1.19.3"
+ssz = "^0.3.1"
 
 [tool.poetry.group.dev.dependencies]
 pylint = "^2.0.0"
