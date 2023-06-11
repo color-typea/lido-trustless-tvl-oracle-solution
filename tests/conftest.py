@@ -3,7 +3,7 @@ import secrets
 import pytest
 
 from brownie import accounts
-from brownie import TVLOracleContract, LidoLocatorMock, LidoStakingRouterMock, ZKLLVMVerifierMock, BeaconBlockHashKeeper
+from brownie import ZKTVLOracleContract, LidoLocatorMock, LidoStakingRouterMock, ZKLLVMVerifierMock, BeaconBlockHashKeeper
 from eth_typing import HexStr
 
 from dataclasses import dataclass
@@ -15,7 +15,7 @@ class Contracts:
     lido_locator: LidoLocatorMock
     lido_staking_router: LidoStakingRouterMock
     block_hash_keeper: BeaconBlockHashKeeper
-    tvl_contract: TVLOracleContract
+    tvl_contract: ZKTVLOracleContract
 
 @pytest.fixture
 def owner():
@@ -51,7 +51,7 @@ def beacon_block_hash_keeper(owner):
 
 @pytest.fixture
 def tvl_oracle_contract(owner, verifier, hash_keeper, locator, verification_gate):
-    owner.deploy(TVLOracleContract, verifier.address, verification_gate, hash_keeper.address, locator.address)
+    owner.deploy(ZKTVLOracleContract, verifier.address, verification_gate, hash_keeper.address, locator.address)
 
 @pytest.fixture
 def all_contracts(verifier_mock, locator_mock, staking_router_mock, beacon_block_hash_keeper, tvl_oracle_contract) -> Contracts:

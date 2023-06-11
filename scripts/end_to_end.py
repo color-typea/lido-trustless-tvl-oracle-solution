@@ -4,7 +4,7 @@ import logging
 
 from brownie.network import accounts
 from brownie import (
-    TVLOracleContract, LidoLocatorMock, LidoStakingRouterMock, ZKLLVMVerifierMock,
+    ZKTVLOracleContract, LidoLocatorMock, LidoStakingRouterMock, ZKLLVMVerifierMock,
     BeaconBlockHashKeeper, Wei
 )
 from brownie.convert import to_bytes, to_address, to_bool, to_int
@@ -43,7 +43,7 @@ class Contracts:
     lido_locator: LidoLocatorMock
     lido_staking_router: LidoStakingRouterMock
     block_hash_keeper: BeaconBlockHashKeeper
-    tvl_contract: TVLOracleContract
+    tvl_contract: ZKTVLOracleContract
     verification_gate: HexStr
 
     def set_verifier_mock(self, passes=False):
@@ -109,7 +109,7 @@ def deploy_contracts(owner, withdrawal_credentials: bytes, verification_gate: He
     staking_router = LidoStakingRouterMock.deploy(withdrawal_credentials, deploy_tx_info)
     locator = LidoLocatorMock.deploy(staking_router.address, deploy_tx_info)
     hash_keeper = BeaconBlockHashKeeper.deploy(deploy_tx_info)
-    tvl_oracle_contract = TVLOracleContract.deploy(
+    tvl_oracle_contract = ZKTVLOracleContract.deploy(
         verifier.address, verification_gate, hash_keeper.address, locator.address, deploy_tx_info
     )
 
@@ -152,6 +152,8 @@ class DI:
 
 
 container = DI()
+
+CONTRACT_VERSION = 1
 
 def main():
     container.server = StubEthApiServer()
@@ -216,7 +218,7 @@ def step1_success(block_meta, bs1: BeaconState):
     report1 = OracleReport(block_meta.slot, block_meta.epoch, WithdrawalCredentials.LIDO, 10, 1, Wei(2 * 10 ** 18))
     proof = OracleProof(block_meta.block_hash, bytes.fromhex("abcdef"))
 
-    container.contracts.tvl_contract.handleOracleReport(report1.to_contract_call(), proof.to_contract_call())
+    container.contracts.tvl_contract.submitReportData(report1.to_contract_call(), proof.to_contract_call(), CONTRACT_VERSION)
     latest_report = OracleReport.reconstruct_from_contract(container.contracts.tvl_contract.getLastReport())
 
     assert latest_report == report1
@@ -236,7 +238,7 @@ def step2_fail_verifier_rejects(block_meta, state: BeaconState, expected_report:
     proof = OracleProof(block_meta.block_hash, bytes.fromhex("abcdef"))
 
     try:
-        container.contracts.tvl_contract.handleOracleReport(report2.to_contract_call(), proof.to_contract_call())
+        container.contracts.tvl_contract.submitReportData(report2.to_contract_call(), proof.to_contract_call(), CONTRACT_VERSION)
         assert False, "Report should have been rejected"
     except VirtualMachineError:
         pass
@@ -258,7 +260,7 @@ def step3_fail_wrong_withdrawal_credentials(
     proof = OracleProof(block_meta.block_hash, bytes.fromhex("abcdef"))
 
     try:
-        container.contracts.tvl_contract.handleOracleReport(report3.to_contract_call(), proof.to_contract_call())
+        container.contracts.tvl_contract.submitReportData(report3.to_contract_call(), proof.to_contract_call(), CONTRACT_VERSION)
         assert False, "Report should have been rejected"
     except VirtualMachineError:
         pass
@@ -280,7 +282,7 @@ def step4_fail_wrong_beacon_block_hash(
     report4 = OracleReport(block_meta.slot, block_meta.epoch, WithdrawalCredentials.LIDO, 0, 100, Wei(10000))
     proof = OracleProof(b'\x00' * 32, bytes.fromhex("abcdef"))
     try:
-        container.contracts.tvl_contract.handleOracleReport(report4.to_contract_call(), proof.to_contract_call())
+        container.contracts.tvl_contract.submitReportData(report4.to_contract_call(), proof.to_contract_call(), CONTRACT_VERSION)
         assert False, "Report should have been rejected"
     except VirtualMachineError:
         pass
@@ -293,7 +295,7 @@ def step4_fail_wrong_beacon_block_hash(
 def step4_success(block_meta, submit_report: OracleReport, expected_report: OracleReport):
     print("Resubmitting report4 with correct hash")
     proof = OracleProof(block_meta.block_hash, bytes.fromhex("abcdef"))
-    container.contracts.tvl_contract.handleOracleReport(submit_report.to_contract_call(), proof.to_contract_call())
+    container.contracts.tvl_contract.submitReportData(submit_report.to_contract_call(), proof.to_contract_call(), CONTRACT_VERSION)
     latest_report = OracleReport.reconstruct_from_contract(container.contracts.tvl_contract.getLastReport())
     assert latest_report == expected_report
     print("Report4 accepted")

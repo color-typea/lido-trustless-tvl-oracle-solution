@@ -7,7 +7,7 @@ import "../interfaces/ILidoLocator.sol";
 import "../interfaces/IBeaconBlockHashProvider.sol";
 
 
-contract TVLOracleContract {
+contract ZKTVLOracleContract {
     struct OracleReport {
         uint256 slot;
         uint256 epoch;
@@ -36,6 +36,9 @@ contract TVLOracleContract {
     address verificationGate;
     IBeaconBlockHashProvider beaconBlockHashProvider;
     ILidoLocator lidoLocator;
+    uint public constant contractVersion = 1;
+
+    error UnexpectedContractVersion(uint256 expected, uint256 received);
 
     constructor(
         address zkllvmVerifier_,
@@ -49,10 +52,12 @@ contract TVLOracleContract {
         lidoLocator = ILidoLocator(lidoLocator_);
     }
 
-    function handleOracleReport(
+    function submitReportData(
         OracleReport calldata report,
-        OracleProof calldata proof
+        OracleProof calldata proof,
+        uint version
     ) public {
+        _checkContractVersion(version);
         _require(report.slot > latestReport.slot, report, "Report for a later slot already received");
 
         _verifyReportSanity(report);
@@ -73,6 +78,13 @@ contract TVLOracleContract {
         );
 
         latestReport = report;
+    }
+
+    // Compatible with Versioned.sol, intended to be later replaced by complete versioning solution
+    function _checkContractVersion(uint256 version) internal view {
+        if (version != contractVersion) {
+            revert UnexpectedContractVersion(contractVersion, version);
+        }
     }
 
     function getExpectedWithdrawalCredentials() internal view returns (bytes32) {
