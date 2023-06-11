@@ -132,7 +132,9 @@ dmypy.json
 
 # IDE
 .idea/
+.vscode/
 
 # vim
 *.swp
 .direnv
+
