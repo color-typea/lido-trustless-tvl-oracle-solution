@@ -1,3 +1,6 @@
+import os
+
+import requests
 from brownie.exceptions import VirtualMachineError
 from dataclasses import dataclass
 import logging
@@ -11,6 +14,7 @@ from brownie.convert import to_bytes, to_address, to_bool, to_int
 from eth_typing import HexStr
 
 import secrets
+from hexbytes import HexBytes
 
 from typing import Iterator
 
@@ -24,7 +28,7 @@ LOGGER = logging.getLogger("main")
 @dataclass
 class BeaconBlockHashRecord:
     slot: int
-    block_hash: bytes
+    block_hash: HexBytes
 
     @property
     def epoch(self):
@@ -116,12 +120,53 @@ def deploy_contracts(owner, withdrawal_credentials: bytes, verification_gate: He
     return Contracts(verifier, locator, staking_router, hash_keeper, tvl_oracle_contract, verification_gate)
 
 
-def gen_block_hashes() -> Iterator[BeaconBlockHashRecord]:
-    slot_number = 1
-    while True:
-        next_hash = secrets.token_bytes(32)
-        yield BeaconBlockHashRecord(slot_number, next_hash)
-        slot_number += 1
+class BlockHashProvider:
+    def gen_block_hashes(self) -> Iterator[BeaconBlockHashRecord]:
+        pass
+
+class SyntheticBlockHashProvider(BlockHashProvider):
+    def gen_block_hashes(self) -> Iterator[BeaconBlockHashRecord]:
+        slot_number = 1
+        while True:
+            next_hash = secrets.token_bytes(32)
+            yield BeaconBlockHashRecord(slot_number, next_hash)
+            slot_number += 1
+
+
+class ConsensusHttpClientBlockHashProvider(BlockHashProvider):
+    _final_slot = None
+    _starting_slot = None
+
+    BEACON_HEADERS_ENDPOINT = "/eth/v1/beacon/headers/{block_id}"
+    def __init__(self, consensus_client_url, start_N_slots_back = 30):
+        self._base_url = consensus_client_url
+        self._start_N_slots_back = start_N_slots_back
+
+    def _init(self):
+        block_header_json = self._get_block_header(state_id='head')
+        head_slot_number = int(block_header_json["header"]["message"]["slot"])
+        self._final_slot = head_slot_number
+        self._starting_slot = head_slot_number - self._start_N_slots_back
+
+    def _get_block_header(self, state_id):
+        url = self._base_url + self.BEACON_HEADERS_ENDPOINT.format(block_id=state_id)
+        with requests.get(url) as response:
+            response.raise_for_status()
+            json_response = response.json()
+            return json_response["data"]
+
+    def gen_block_hashes(self) -> Iterator[BeaconBlockHashRecord]:
+        for slot_number in self.slot_range:
+            block_header = self._get_block_header(slot_number)
+            block_hash = block_header["root"]
+            block_hash_bytes = HexBytes(block_hash)
+            yield BeaconBlockHashRecord(slot_number, block_hash_bytes)
+
+    @property
+    def slot_range(self) -> range:
+        if self._final_slot is None:
+            self._init()
+        return range(self._starting_slot, self._final_slot)
 
 
 class WithdrawalCredentials:
@@ -172,7 +217,9 @@ def main():
     assert to_bytes(container.contracts.lido_staking_router.getWithdrawalCredentials()) == WithdrawalCredentials.LIDO
     assert to_address(container.contracts.lido_locator.stakingRouter()) == container.contracts.lido_staking_router.address
 
-    hash_sequence = gen_block_hashes()
+    hash_sequence_provider = ConsensusHttpClientBlockHashProvider(os.getenv('CONSENSUS_CLIENT_URI'))
+    print("Hash sequence provider slot range", hash_sequence_provider.slot_range)
+    hash_sequence = hash_sequence_provider.gen_block_hashes()
 
     print("Adding initial state")
     initial_validators = (
@@ -186,24 +233,24 @@ def main():
         block1_meta.slot, block1_meta.epoch, Constants.Genesis.BLOCK_ROOT, initial_validators, initial_balances
     )
     report1 = step1_success(block1_meta, bs1)
-    input(f"At slot {block1_meta.slot} - press any key to progress")
+    input(f"At slot {block1_meta.slot} - press enter to progress")
 
     block2_meta = next(hash_sequence)
     bs2 = BeaconStateModifier(bs1).update_balance(0, 1234567890).update_balance(7, 10).get()
     step2_fail_verifier_rejects(block2_meta, bs2, report1)
-    input(f"At slot {block2_meta.slot} - press any key to progress")
+    input(f"At slot {block2_meta.slot} - press enter to progress")
 
     block3_meta = next(hash_sequence)
     bs3 = BeaconStateModifier(bs2).modify_validator_fields(0, {"slashed": True}).get()
     step3_fail_wrong_withdrawal_credentials(block3_meta, bs3, finalized_slot=block2_meta.slot, expect_report=report1)
-    input(f"At slot {block3_meta.slot} - press any key to progress")
+    input(f"At slot {block3_meta.slot} - press enter to progress")
 
     block4_meta = next(hash_sequence)
     bs4 = BeaconStateModifier(bs3).update_balance(1, bs3.balances[1] + 2 * 10 ** 9).get()
     report4 = step4_fail_wrong_beacon_block_hash(block4_meta, bs4, expected_report=report1)
-    input(f"At slot {block4_meta.slot} - press any key to resubmit with correct hash")
+    input(f"At slot {block4_meta.slot} - press enter to resubmit with correct hash")
     step4_success(block4_meta, submit_report=report4, expected_report=report4)
-    input(f"At slot {block4_meta.slot} - press any key to progress")
+    input(f"At slot {block4_meta.slot} - press enter to progress")
 
     container.server.terminate()
     print("The End")
