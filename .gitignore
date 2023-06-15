@@ -136,3 +136,15 @@ dmypy.json
 # vim
 *.swp
 .direnv
+node_modules
+
+# Yarn stuff
+.yarn/*
+
+**/build/
+**/node_modules/
+**/lib/abi/*.json
+**/artifacts/
+**/artifacts-userdoc/
+.cache
+**/cache/
