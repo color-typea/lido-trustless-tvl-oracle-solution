@@ -23,7 +23,7 @@ from ssz.sedes import (
 )
 from typing.io import BinaryIO
 
-from scripts import constants
+from scripts.components import constants
 
 Hash32 = bytes32
 Root = bytes32
@@ -235,6 +235,10 @@ class BeaconStateModifier:
     def __init__(self, beacon_state: BeaconState):
         self._beacon_state = BeaconState.clone(beacon_state)
 
+    def set_slot(self, slot):
+        self._beacon_state.slot = slot
+        return self
+
     def update_balance(self, idx: int, new_value: int) -> 'BeaconStateModifier':
         assert idx < len(self._beacon_state.balances)
         self._beacon_state.balances = self._beacon_state.balances.set(idx, new_value)
@@ -249,6 +253,9 @@ class BeaconStateModifier:
         assert validator_idx < len(self._beacon_state.validators)
         self._beacon_state.validators = self._beacon_state.validators.set(validator_idx, validator)
         return self
+
+    def set_validator_exited(self, validator_idx: int, epoch: int) -> 'BeaconStateModifier':
+        return self.modify_validator_fields(validator_idx, {"exit_epoch": epoch})
 
     def modify_validator_fields(self, validator_idx: int, fields: dict[str, any]) -> 'BeaconStateModifier':
         assert validator_idx < len(self._beacon_state.validators)

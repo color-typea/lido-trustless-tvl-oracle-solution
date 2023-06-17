@@ -1,7 +1,10 @@
+import subprocess
+
 import os
 
 import requests
 from brownie.exceptions import VirtualMachineError
+from brownie.network.account import LocalAccount
 from dataclasses import dataclass
 import logging
 
@@ -10,19 +13,25 @@ from brownie import (
     ZKTVLOracleContract, LidoLocatorMock, LidoStakingRouterMock, ZKLLVMVerifierMock,
     BeaconBlockHashKeeper, Wei
 )
+from brownie.network import gas_price
+from brownie.network.gas.strategies import LinearScalingStrategy
+
 from brownie.convert import to_bytes, to_address, to_bool, to_int
 from eth_typing import HexStr
 
 import secrets
 from hexbytes import HexBytes
 
-from typing import Iterator
+from typing import Iterator, List
 
-from scripts.eth_node_api_stub_server import StubEthApiServer
-from scripts.eth_consensus_layer_ssz import BeaconStateModifier, BeaconState
-from scripts.eth_ssz_utils import make_validator, make_beacon_block_state, Constants
+from scripts.components.oracle_invoker import OracleInvoker, OracleInvokerEnv
+from scripts.components.eth_node_api_stub_server import StubEthApiServer
+from scripts.components.eth_consensus_layer_ssz import BeaconStateModifier, BeaconState
+from scripts.components.eth_ssz_utils import make_validator, make_beacon_block_state, Constants
 
 LOGGER = logging.getLogger("main")
+
+
 
 
 @dataclass
@@ -39,6 +48,65 @@ class BeaconBlockHashRecord:
 
     def to_block_hash_keeper_call(self):
         return (self.slot, self.block_hash)
+
+
+
+
+@dataclass
+class OracleReport:
+    slot: int
+    epoch: int
+    lidoWithdrawalCredentials: bytes
+    activeValidators: int
+    exitedValidators: int
+    totalValueLocked: int
+
+    def to_contract_call(self):
+        return (self.slot, self.epoch, self.lidoWithdrawalCredentials, self.activeValidators, self.exitedValidators,
+                self.totalValueLocked)
+
+    @classmethod
+    def reconstruct_from_contract(cls, raw_values):
+        return cls(
+            slot=to_int(raw_values[0]),
+            epoch=to_int(raw_values[1]),
+            lidoWithdrawalCredentials=to_bytes(raw_values[2]),
+            activeValidators=to_int(raw_values[3]),
+            exitedValidators=to_int(raw_values[4]),
+            totalValueLocked=to_int(raw_values[5]),
+        )
+
+    @classmethod
+    def compute_expected(cls, block_data: BeaconBlockHashRecord, withdrawal_credentials: bytes, beacon_state: BeaconState) -> 'OracleReport':
+        balance, active, exited = 0, 0, 0
+        for (idx, validator) in enumerate(beacon_state.validators):
+            if validator.withdrawal_credentials != WithdrawalCredentials.LIDO:
+                continue
+
+            if validator.exit_epoch <= block_data.epoch:
+                exited += 1
+            elif validator.activation_eligibility_epoch <= block_data.epoch:
+                active += 1
+            validator_balance = beacon_state.balances[idx]
+            balance += validator_balance
+
+        return cls(
+            slot = block_data.slot,
+            epoch=block_data.epoch,
+            lidoWithdrawalCredentials=withdrawal_credentials,
+            activeValidators=active,
+            exitedValidators=exited,
+            totalValueLocked=balance
+        )
+
+
+@dataclass
+class OracleProof:
+    beaconBlockHash: bytes
+    zkProof: bytes
+
+    def to_contract_call(self):
+        return (self.beaconBlockHash, self.zkProof)
 
 
 @dataclass
@@ -72,39 +140,11 @@ class Contracts:
             print(f"Expected: {next_beacon_block_hash.block_hash.hex()}")
             raise e
 
-
-@dataclass
-class OracleReport:
-    slot: int
-    epoch: int
-    lidoWithdrawalCredentials: bytes
-    activeValidators: int
-    exitedValidators: int
-    totalValueLocked: int
-
-    def to_contract_call(self):
-        return (self.slot, self.epoch, self.lidoWithdrawalCredentials, self.activeValidators, self.exitedValidators,
-                self.totalValueLocked)
-
-    @classmethod
-    def reconstruct_from_contract(cls, raw_values):
-        return cls(
-            slot=to_int(raw_values[0]),
-            epoch=to_int(raw_values[1]),
-            lidoWithdrawalCredentials=to_bytes(raw_values[2]),
-            activeValidators=to_int(raw_values[3]),
-            exitedValidators=to_int(raw_values[4]),
-            totalValueLocked=to_int(raw_values[5]),
+    def submit_block_data(self, report: OracleReport, proof: OracleProof):
+        self.tvl_contract.submitReportData(
+            report.to_contract_call(), proof.to_contract_call(), CONTRACT_VERSION
         )
 
-
-@dataclass
-class OracleProof:
-    beaconBlockHash: bytes
-    zkProof: bytes
-
-    def to_contract_call(self):
-        return (self.beaconBlockHash, self.zkProof)
 
 
 def deploy_contracts(owner, withdrawal_credentials: bytes, verification_gate: HexStr) -> Contracts:
@@ -129,7 +169,7 @@ class SyntheticBlockHashProvider(BlockHashProvider):
         slot_number = 1
         while True:
             next_hash = secrets.token_bytes(32)
-            yield BeaconBlockHashRecord(slot_number, next_hash)
+            yield BeaconBlockHashRecord(slot_number, HexBytes(next_hash))
             slot_number += 1
 
 
@@ -178,6 +218,7 @@ class DI:
     def __init__(self):
         self._contracts = None
         self._server = None
+        self._invoker = None
 
     @property
     def contracts(self) -> Contracts:
@@ -195,6 +236,14 @@ class DI:
     def server(self, value: StubEthApiServer):
         self._server = value
 
+    @property
+    def oracle_invoker(self) -> OracleInvoker:
+        return self._invoker
+
+    @oracle_invoker.setter
+    def oracle_invoker(self, value: OracleInvoker):
+        self._invoker = value
+
 
 container = DI()
 
@@ -206,8 +255,14 @@ def main():
     container.server.start_nonblocking()
     print("Server started")
 
+    # this is needed to make brownie with hardforks newer than istanbul
+    gas_price('60 gwei')
+    sponsor = accounts[1]
+    oracle_operator: LocalAccount = accounts.add("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+    sponsor.transfer(oracle_operator, '10 ether')
+    print("Oracle operator balance:", oracle_operator.balance())
+
     owner = accounts[0]
-    oracle_operator = accounts[1]
     verification_gate = HexStr(secrets.token_hex(20))
     print(f"Verification gate: {verification_gate}\nWithdrawal credentials: {WithdrawalCredentials.LIDO.hex()}")
 
@@ -217,8 +272,10 @@ def main():
     assert to_bytes(container.contracts.lido_staking_router.getWithdrawalCredentials()) == WithdrawalCredentials.LIDO
     assert to_address(container.contracts.lido_locator.stakingRouter()) == container.contracts.lido_staking_router.address
 
-    hash_sequence_provider = ConsensusHttpClientBlockHashProvider(os.getenv('CONSENSUS_CLIENT_URI'))
-    print("Hash sequence provider slot range", hash_sequence_provider.slot_range)
+    hash_sequence_provider = SyntheticBlockHashProvider()
+    # hash_sequence_provider = ConsensusHttpClientBlockHashProvider(os.getenv('CONSENSUS_CLIENT_URI'))
+    # print("Hash sequence provider slot range", hash_sequence_provider.slot_range)
+
     hash_sequence = hash_sequence_provider.gen_block_hashes()
 
     print("Adding initial state")
@@ -226,55 +283,97 @@ def main():
             [make_validator(WithdrawalCredentials.LIDO, 0, 1, None) for _ in range(10)] +
             [make_validator(WithdrawalCredentials.OTHER, 0, 1, None) for _ in range(5)]
     )
-    initial_balances = [(idx + 1) * (10 ** 9) for idx in range(len(initial_validators))]
+    initial_balances = [10 * (10 ** 9) for _ in range(10)] + [1000 * (10 ** 9) for _ in range(5)]
+
+    oracle_invoker = OracleInvoker(
+        python=os.getenv('ORACLE_PYTHON'),
+        cwd=os.getenv('ORACLE_CWD'),
+        script=os.getenv('ORACLE_MODULE'),
+        env=OracleInvokerEnv(
+            bs_api_uri="http://localhost:5000",
+            consensus_api_uri="http://localhost:5000",
+            execution_api_uri="http://localhost:8545",
+            locator_address=container.contracts.lido_locator.address,
+            zktvk_contract_address=container.contracts.tvl_contract.address,
+        ),
+        account=HexStr(oracle_operator.private_key),
+        # args=["-d"],
+        named_args={"-e": ".env"}
+    )
+    container.oracle_invoker = oracle_invoker
 
     block1_meta = next(hash_sequence)
     bs1 = make_beacon_block_state(
         block1_meta.slot, block1_meta.epoch, Constants.Genesis.BLOCK_ROOT, initial_validators, initial_balances
     )
-    report1 = step1_success(block1_meta, bs1)
+    expected_report1 = OracleReport.compute_expected(block1_meta, WithdrawalCredentials.LIDO, bs1)
+    step1_success(block1_meta, bs1, expected_report1)
     input(f"At slot {block1_meta.slot} - press enter to progress")
 
     block2_meta = next(hash_sequence)
-    bs2 = BeaconStateModifier(bs1).update_balance(0, 1234567890).update_balance(7, 10).get()
-    step2_fail_verifier_rejects(block2_meta, bs2, report1)
+    bs2 = BeaconStateModifier(bs1).set_slot(block2_meta.slot).update_balance(0, initial_balances[0] + 10 ** 9).update_balance(7, 10).get()
+    step2_fail_verifier_rejects(block2_meta, bs2, expected_report = expected_report1)
     input(f"At slot {block2_meta.slot} - press enter to progress")
 
     block3_meta = next(hash_sequence)
-    bs3 = BeaconStateModifier(bs2).modify_validator_fields(0, {"slashed": True}).get()
-    step3_fail_wrong_withdrawal_credentials(block3_meta, bs3, finalized_slot=block2_meta.slot, expect_report=report1)
+    bs3 = BeaconStateModifier(bs2).set_slot(block3_meta.slot).modify_validator_fields(0, {"slashed": True}).get()
+    step3_fail_wrong_withdrawal_credentials(block3_meta, bs3, finalized_slot=block2_meta.slot, expected_report=expected_report1)
     input(f"At slot {block3_meta.slot} - press enter to progress")
 
     block4_meta = next(hash_sequence)
-    bs4 = BeaconStateModifier(bs3).update_balance(1, bs3.balances[1] + 2 * 10 ** 9).get()
-    report4 = step4_fail_wrong_beacon_block_hash(block4_meta, bs4, expected_report=report1)
+    bs4 = BeaconStateModifier(bs3).set_slot(block4_meta.slot).update_balance(1, initial_balances[1] + 2 * 10 ** 9).set_validator_exited(4, block4_meta.epoch).get()
+
+    step4_fail_wrong_beacon_block_hash(block4_meta, bs4, expected_report=expected_report1)
+
+    expected_report4 = OracleReport.compute_expected(block4_meta, WithdrawalCredentials.LIDO, bs4)
     input(f"At slot {block4_meta.slot} - press enter to resubmit with correct hash")
-    step4_success(block4_meta, submit_report=report4, expected_report=report4)
+    step4_success(expected_report=expected_report4)
     input(f"At slot {block4_meta.slot} - press enter to progress")
 
     container.server.terminate()
     print("The End")
 
 
-def step1_success(block_meta, bs1: BeaconState):
-    container.server.add_state(block_meta.slot, block_meta.block_hash, bs1)
+def assert_report_matches(actual_report, expected_report):
+    try:
+        assert actual_report == expected_report
+        print(f"Report matches expected:\nExpected:{expected_report}\n Actual  : {actual_report}")
+    except AssertionError as e:
+        print(f"Report does not match:\nExpected:{expected_report}\n Actual  : {actual_report}")
+        raise e
+
+def assert_report_dont_match(actual_report, unexpected_report):
+    try:
+        assert actual_report != unexpected_report
+    except AssertionError as e:
+        print(f"Report matches the unexpected value: {unexpected_report}")
+        raise e
+
+def step1_success(block_meta, bs1: BeaconState, expected_report: OracleReport):
+    container.server.add_state(block_meta.slot, HexBytes(block_meta.block_hash), HexBytes(Constants.Genesis.BLOCK_ROOT), bs1)
     container.server.set_chain_pointers(head=block_meta.slot, finalized=block_meta.slot, justified=block_meta.slot)
     container.contracts.update_block_hash(block_meta)
     container.contracts.set_verifier_mock(passes=True)
 
-    report1 = OracleReport(block_meta.slot, block_meta.epoch, WithdrawalCredentials.LIDO, 10, 1, Wei(2 * 10 ** 18))
-    proof = OracleProof(block_meta.block_hash, bytes.fromhex("abcdef"))
+    input(f"Ready to run oracle - press enter to start...")
+    container.oracle_invoker.run()
+    print(f"Oracle run successfully")
 
-    container.contracts.tvl_contract.submitReportData(report1.to_contract_call(), proof.to_contract_call(), CONTRACT_VERSION)
+    # report1 = OracleReport(block_meta.slot, block_meta.epoch, WithdrawalCredentials.LIDO, 10, 1, Wei(2 * 10 ** 18))
+    # report1 = expected_report
+    # proof = OracleProof(block_meta.block_hash, bytes.fromhex("abcdef"))
+
+    # container.contracts.tvl_contract.submitReportData(report1.to_contract_call(), proof.to_contract_call(), CONTRACT_VERSION)
+
+    print(f"Checking the report...")
     latest_report = OracleReport.reconstruct_from_contract(container.contracts.tvl_contract.getLastReport())
+    assert_report_matches(latest_report, expected_report)
 
-    assert latest_report == report1
-    print("Report1 accepted")
-    return report1
-
+    return latest_report
 
 def step2_fail_verifier_rejects(block_meta, state: BeaconState, expected_report: OracleReport):
-    container.server.add_state(block_meta.slot, block_meta.block_hash, state)
+    # this is wrong - should not use HexBytes(block_meta.block_hash) for parent, but I'm making a quick shortcut here
+    container.server.add_state(block_meta.slot, HexBytes(block_meta.block_hash), HexBytes(block_meta.block_hash), state)
     container.server.set_chain_pointers(head=block_meta.slot)
     container.contracts.update_block_hash(block_meta)
     container.contracts.set_verifier_mock(passes=False)
@@ -289,16 +388,19 @@ def step2_fail_verifier_rejects(block_meta, state: BeaconState, expected_report:
         assert False, "Report should have been rejected"
     except VirtualMachineError:
         pass
+
+    print(f"Checking the report...")
     latest_report = OracleReport.reconstruct_from_contract(container.contracts.tvl_contract.getLastReport())
-    assert latest_report == expected_report, "Report was unexpectedly updated"
+    assert_report_dont_match(latest_report, report2)
+    assert_report_matches(latest_report, expected_report)
     print("Report 2 rejected - verifier rejects")
-    return report2
 
 
 def step3_fail_wrong_withdrawal_credentials(
-        block_meta, state: BeaconState, finalized_slot: int, expect_report: OracleReport
+        block_meta, state: BeaconState, finalized_slot: int, expected_report: OracleReport
 ):
-    container.server.add_state(block_meta.slot, block_meta.block_hash, state)
+    # this is wrong - should not use HexBytes(block_meta.block_hash) for parent, but I'm making a quick shortcut here
+    container.server.add_state(block_meta.slot, HexBytes(block_meta.block_hash), HexBytes(block_meta.block_hash), state)
     container.server.set_chain_pointers(head=block_meta.slot, finalized=finalized_slot)
     container.contracts.update_block_hash(block_meta)
     container.contracts.set_verifier_mock(passes=True)
@@ -311,16 +413,19 @@ def step3_fail_wrong_withdrawal_credentials(
         assert False, "Report should have been rejected"
     except VirtualMachineError:
         pass
+
+    print(f"Checking the report...")
     latest_report = OracleReport.reconstruct_from_contract(container.contracts.tvl_contract.getLastReport())
-    assert latest_report == expect_report, "Report was unexpectedly updated"
+    assert_report_dont_match(latest_report, report3)
+    assert_report_matches(latest_report, expected_report)
     print("Report 3 rejected - wrong invalid credentials")
-    return report3
 
 
 def step4_fail_wrong_beacon_block_hash(
         block_meta: BeaconBlockHashRecord, bs4: BeaconState, expected_report: OracleReport
 ):
-    container.server.add_state(block_meta.slot, block_meta.block_hash, bs4)
+    # this is wrong - should not use HexBytes(block_meta.block_hash) for parent, but I'm making a quick shortcut here
+    container.server.add_state(block_meta.slot, HexBytes(block_meta.block_hash), HexBytes(block_meta.block_hash), bs4)
     container.server.set_chain_pointers(head=block_meta.slot, finalized=block_meta.slot, justified=block_meta.slot)
 
     container.contracts.update_block_hash(block_meta)
@@ -333,16 +438,23 @@ def step4_fail_wrong_beacon_block_hash(
         assert False, "Report should have been rejected"
     except VirtualMachineError:
         pass
+
+    print(f"Checking the report...")
     latest_report = OracleReport.reconstruct_from_contract(container.contracts.tvl_contract.getLastReport())
-    assert latest_report == expected_report, "Report was unexpectedly updated"
+    assert_report_dont_match(latest_report, report4)
+    assert_report_matches(latest_report, expected_report)
     print("Report 4 rejected - wrong beacon block hash")
     return report4
 
 
-def step4_success(block_meta, submit_report: OracleReport, expected_report: OracleReport):
-    print("Resubmitting report4 with correct hash")
-    proof = OracleProof(block_meta.block_hash, bytes.fromhex("abcdef"))
-    container.contracts.tvl_contract.submitReportData(submit_report.to_contract_call(), proof.to_contract_call(), CONTRACT_VERSION)
+def step4_success(expected_report: OracleReport):
+    print("Resubmitting report4")
+
+    input(f"Ready to run oracle - press enter to start...")
+    container.oracle_invoker.run()
+    input(f"Oracle run successfully")
+
+    print(f"Checking the report...")
     latest_report = OracleReport.reconstruct_from_contract(container.contracts.tvl_contract.getLastReport())
-    assert latest_report == expected_report
+    assert_report_matches(latest_report, expected_report)
     print("Report4 accepted")

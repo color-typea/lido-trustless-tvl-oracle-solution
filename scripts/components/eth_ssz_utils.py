@@ -4,8 +4,8 @@ import secrets
 
 from typing import List, Optional
 
-from scripts import constants
-from scripts.eth_consensus_layer_ssz import (
+from scripts.components import constants
+from scripts.components.eth_consensus_layer_ssz import (
     BeaconState, Fork, BeaconBlockHeader, Validator, Checkpoint, Eth1Data,
     SyncCommittee, ExecutionPayloadHeader
 )
@@ -106,7 +106,7 @@ def make_beacon_block_state(
         slashings = Generators.zero_int_vector(constants.EPOCHS_PER_SLASHINGS_VECTOR),
         previous_epoch_participation = [],
         current_epoch_participation = [],
-        justification_bits = b"\x00\x00",
+        justification_bits = b"\x00\x00\x00\x00",
         previous_justified_checkpoint = Checkpoint.create(epoch = previous_epoch, root = Generators.hash_root()),
         current_justified_checkpoint = Checkpoint.create(epoch = epoch, root = Generators.hash_root()),
         finalized_checkpoint = Checkpoint.create(epoch = finalized_epoch, root = Generators.hash_root()),

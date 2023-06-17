@@ -1,4 +1,5 @@
 import secrets
+from hexbytes import HexBytes
 
 from typing import Iterator, Tuple
 
@@ -39,13 +40,14 @@ def main():
     bs1 = make_beacon_block_state(
         slot, slot // 32, Constants.Genesis.BLOCK_ROOT, initial_validators, initial_balances
     )
-    server.add_state(slot, beacon_block_hash, bs1)
+
+    server.add_state(slot, HexBytes(beacon_block_hash), HexBytes(Constants.Genesis.BLOCK_ROOT), bs1)
     server.set_chain_pointers(head=slot, finalized=slot, justified=slot)
     input(f"At slot {slot} - press any key to progress")
 
     slot, beacon_block_hash = next(hash_sequence)
     bs2 = BeaconStateModifier(bs1).update_balance(0, 1234567890).update_balance(7, 10).get()
-    server.add_state(slot, beacon_block_hash, bs2)
+    server.add_state(slot, HexBytes(beacon_block_hash), HexBytes(beacon_block_hash), bs2)
     server.set_chain_pointers(head=slot)
     input(f"At slot {slot} - press any key to progress")
 
