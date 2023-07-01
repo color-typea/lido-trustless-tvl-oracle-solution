@@ -11,6 +11,7 @@ python = ">=3.10,<3.11"
 # conflicts with ssz, but is installed separately via `pipx install eth-brownie` so just documenting usage/dependency
 #eth-brownie = "^1.19.3"
 ssz = "^0.3.1"
+flask = "^2.3.2"
 
 [tool.poetry.group.dev.dependencies]
 pylint = "^2.0.0"
