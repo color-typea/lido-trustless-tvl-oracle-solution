@@ -11,8 +11,10 @@ import logging
 from brownie.network import accounts
 from brownie import (
     ZKTVLOracleContract, LidoLocatorMock, LidoStakingRouterMock, ZKLLVMVerifierMock,
-    BeaconBlockHashKeeper, Wei
+    BeaconBlockHashKeeper, Wei,
+    lido_gate_argument_split_gen
 )
+from brownie import (ProofVerifier, PlaceholderVerifier)
 from brownie.network import gas_price
 from brownie.network.gas.strategies import LinearScalingStrategy
 
@@ -111,6 +113,8 @@ class OracleProof:
 
 @dataclass
 class Contracts:
+    real_verifier: PlaceholderVerifier
+    gate: lido_gate_argument_split_gen
     verifier: ZKLLVMVerifierMock
     lido_locator: LidoLocatorMock
     lido_staking_router: LidoStakingRouterMock
@@ -140,15 +144,22 @@ class Contracts:
             print(f"Expected: {next_beacon_block_hash.block_hash.hex()}")
             raise e
 
-    def submit_block_data(self, report: OracleReport, proof: OracleProof):
+    def submit_report(self, report: OracleReport, proof: OracleProof):
         self.tvl_contract.submitReportData(
             report.to_contract_call(), proof.to_contract_call(), CONTRACT_VERSION
         )
 
+    def check_if_verifies(self, proof: bytes):
+        init_params, column_rotations = [], []
+        result = self.verifier.verify(proof, init_params, column_rotations, self.gate.address)
+        return result
 
 
 def deploy_contracts(owner, withdrawal_credentials: bytes, verification_gate: HexStr) -> Contracts:
     deploy_tx_info = {"from": owner}
+    verifier_lib = ProofVerifier.deploy(deploy_tx_info)  # used by PlaceholderVerifier
+    real_verifier = PlaceholderVerifier.deploy(deploy_tx_info)
+    gate = lido_gate_argument_split_gen.deploy(deploy_tx_info)
     verifier = ZKLLVMVerifierMock.deploy(deploy_tx_info)
     staking_router = LidoStakingRouterMock.deploy(withdrawal_credentials, deploy_tx_info)
     locator = LidoLocatorMock.deploy(staking_router.address, deploy_tx_info)
@@ -157,7 +168,7 @@ def deploy_contracts(owner, withdrawal_credentials: bytes, verification_gate: He
         verifier.address, verification_gate, hash_keeper.address, locator.address, deploy_tx_info
     )
 
-    return Contracts(verifier, locator, staking_router, hash_keeper, tvl_oracle_contract, verification_gate)
+    return Contracts(real_verifier, gate, verifier, locator, staking_router, hash_keeper, tvl_oracle_contract, verification_gate)
 
 
 class BlockHashProvider:
@@ -434,7 +445,7 @@ def step4_fail_wrong_beacon_block_hash(
     report4 = OracleReport(block_meta.slot, block_meta.epoch, WithdrawalCredentials.LIDO, 0, 100, Wei(10000))
     proof = OracleProof(b'\x00' * 32, bytes.fromhex("abcdef"))
     try:
-        container.contracts.tvl_contract.submitReportData(report4.to_contract_call(), proof.to_contract_call(), CONTRACT_VERSION)
+        container.contracts.submit_report(report4, proof)
         assert False, "Report should have been rejected"
     except VirtualMachineError:
         pass

@@ -81,8 +81,8 @@ contract PlaceholderVerifier is IVerifier {
             vars.arithmetization_params.public_input_columns = init_params[idx++];
             vars.arithmetization_params.constant_columns = init_params[idx++];
             vars.arithmetization_params.selector_columns = init_params[idx++];
-            vars.arithmetization_params.permutation_columns = vars.arithmetization_params.witness_columns 
-                + vars.arithmetization_params.public_input_columns 
+            vars.arithmetization_params.permutation_columns = vars.arithmetization_params.witness_columns
+                + vars.arithmetization_params.public_input_columns
                 + vars.arithmetization_params.constant_columns;
         }
 
@@ -95,15 +95,15 @@ contract PlaceholderVerifier is IVerifier {
         vars.fri_params.s = new uint256[](max_coset);
         vars.fri_params.batches_num = 4;
         vars.fri_params.batches_sizes = new uint256[](vars.fri_params.batches_num);
-        vars.fri_params.batches_sizes[0] = vars.arithmetization_params.witness_columns + vars.arithmetization_params.public_input_columns;        
+        vars.fri_params.batches_sizes[0] = vars.arithmetization_params.witness_columns + vars.arithmetization_params.public_input_columns;
         vars.fri_params.batches_sizes[1] = 1;
-            // TODO We don't know T_polynomials size. 
-            // We'll extract it from proof in parse_be function 
-            //      and verify fri_proof.query_proof[i].initial_proof[2].values have 
-        vars.fri_params.batches_sizes[2] = 0; 
-        vars.fri_params.batches_sizes[3] = vars.arithmetization_params.permutation_columns 
+            // TODO We don't know T_polynomials size.
+            // We'll extract it from proof in parse_be function
+            //      and verify fri_proof.query_proof[i].initial_proof[2].values have
+        vars.fri_params.batches_sizes[2] = 0;
+        vars.fri_params.batches_sizes[3] = vars.arithmetization_params.permutation_columns
             + vars.arithmetization_params.permutation_columns
-            + vars.arithmetization_params.constant_columns 
+            + vars.arithmetization_params.constant_columns
             + vars.arithmetization_params.selector_columns + 2;
     }
 
@@ -116,7 +116,7 @@ contract PlaceholderVerifier is IVerifier {
         verifier_state memory vars;
         init_vars(vars, init_params, columns_rotations);
         transcript.init_transcript(vars.tr_state, hex"");
-        
+
         (vars.proof_map, vars.proof_size) = placeholder_proof_map_parser.parse_be(blob, 0);
         if(vars.proof_size != blob.length) return false;
         (result, )= batched_lpc_verifier.parse_proof_be(vars.fri_params, blob, vars.proof_map.eval_proof_combined_value_offset);
@@ -141,17 +141,17 @@ contract PlaceholderVerifier is IVerifier {
 
         IGateArgument gate_argument_component = IGateArgument(gate_argument);
         local_vars.gate_argument = gate_argument_component.evaluate_gates_be(
-            blob, 
-            vars.proof_map.eval_proof_combined_value_offset,  
+            blob,
+            vars.proof_map.eval_proof_combined_value_offset,
             gate_params,
             vars.arithmetization_params,
             vars.common_data.columns_rotations
         );
 
         if (!ProofVerifier.verify_proof_be(
-            blob, 
+            blob,
             vars.tr_state,
-            vars.proof_map, 
+            vars.proof_map,
             vars.fri_params, vars.common_data, local_vars,
             vars.arithmetization_params))
             return false;

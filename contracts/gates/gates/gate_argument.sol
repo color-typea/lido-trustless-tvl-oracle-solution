@@ -19,16 +19,16 @@
 //---------------------------------------------------------------------------//
 pragma solidity >=0.8.4;
 
-import "./verifier/types.sol";
-import "./verifier/basic_marshalling.sol";
-import "./verifier/commitments/batched_lpc_verifier.sol";
-import "./verifier/interfaces/gate_argument.sol";
+import "../../../contracts/types.sol";
+import "../../../contracts/basic_marshalling.sol";
+import "../../../contracts/commitments/batched_lpc_verifier.sol";
+import "../../../contracts/interfaces/gate_argument.sol";
 
 import "./gate0.sol";
 import "./gate4.sol";
 
 
-contract lido_gate_argument_split_gen  is IGateArgument{
+contract GateArgument  is IGateArgument{
     uint256 constant GATES_N = 12;
 
     struct local_vars_type{
@@ -94,8 +94,8 @@ contract lido_gate_argument_split_gen  is IGateArgument{
         local_vars.theta_acc = 1;
         local_vars.gates_evaluation = 0;
 
-		(local_vars.gates_evaluation, local_vars.theta_acc) = lido_gate0.evaluate_gate_be(gate_params, local_vars);
-		(local_vars.gates_evaluation, local_vars.theta_acc) = lido_gate4.evaluate_gate_be(gate_params, local_vars);
+		(local_vars.gates_evaluation, local_vars.theta_acc) = Gate0.evaluate_gate_be(gate_params, local_vars);
+		(local_vars.gates_evaluation, local_vars.theta_acc) = Gate4.evaluate_gate_be(gate_params, local_vars);
 
 
         gates_evaluation = local_vars.gates_evaluation;

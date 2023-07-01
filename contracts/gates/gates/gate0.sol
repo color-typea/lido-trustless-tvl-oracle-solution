@@ -20,10 +20,10 @@
 //---------------------------------------------------------------------------//
 pragma solidity >=0.8.4;
 
-import "./verifier/types.sol";
+import "../../../contracts/types.sol";
 import "./gate_argument.sol";
 
-library lido_gate0{
+library Gate0{
     uint256 constant MODULUS_OFFSET = 0x0;
     uint256 constant THETA_OFFSET = 0x20;
 
@@ -39,7 +39,7 @@ library lido_gate0{
 
     function evaluate_gate_be(
         types.gate_argument_params memory gate_params,
-        lido_gate_argument_split_gen.local_vars_type memory local_vars
+        GateArgument.local_vars_type memory local_vars
     ) external pure returns (uint256 gates_evaluation, uint256 theta_acc) {
         gates_evaluation = local_vars.gates_evaluation;
         theta_acc = local_vars.theta_acc;
