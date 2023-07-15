@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from eth_typing import HexStr
 from pathlib import Path
 
+
 @dataclass
 class OracleInvokerEnv:
     execution_api_uri: str
@@ -30,7 +31,10 @@ class OracleInvokerEnv:
 
 
 class OracleInvoker:
-    def __init__(self, python, script, env: OracleInvokerEnv, account: Optional[HexStr] = None, cwd=None, pipe_output=False, args: List[str] = None, named_args: dict[str, str] = None):
+    def __init__(
+            self, python, script, env: OracleInvokerEnv, account: Optional[HexStr] = None, cwd=None, pipe_output=False,
+            args: List[str] = None, named_args: dict[str, str] = None
+    ):
         self.python = python
         self.script = script
         self._cwd = cwd
@@ -59,15 +63,10 @@ class OracleInvoker:
             value = value | {"-a": self.account}
         return value
 
-    def run(self, **kwargs):
-        args = [self.python, "-m", self.script] + self.positional_args + self._flatten_named_args(self.named_args) + self._flatten_named_args(kwargs)
-        # print(f"""
-        #     {args},
-        #     env={self.env.to_env_dict()},
-        #     stdout=subprocess.STDOUT,  # needed for the next line to be sensible
-        #     stderr=subprocess.STDOUT,
-        #     check=True, cwd={self.cwd},
-        # """)
+    def _get_subprocess_args_kwargs(self, **kwargs):
+        args = [self.python, "-m", self.script] + self.positional_args + self._flatten_named_args(
+            self.named_args
+        ) + self._flatten_named_args(kwargs)
         subprocess_kwargs = {
             "env": self.env.to_env_dict(),
             "check": True,
@@ -79,7 +78,21 @@ class OracleInvoker:
                 "stderr": sys.stderr,
             }
             subprocess_kwargs = subprocess_kwargs | pipe_kwargs
+        return args, subprocess_kwargs
 
+    def run(self, **kwargs):
+        args, subprocess_kwargs = self._get_subprocess_args_kwargs(**kwargs)
         process = subprocess.run(args, **subprocess_kwargs)
         if process.returncode != 0:
             raise Exception(f"Failed to run oracle - retcode {process.returncode}")
+
+    def print_env_and_command(self):
+        args, subprocess_kwargs = self._get_subprocess_args_kwargs()
+        print(
+            f"""
+                    {args},
+                    env={subprocess_kwargs['env']},
+                    cwd={subprocess_kwargs['cwd']},
+                    check=True, cwd={self.cwd},
+                """
+        )
