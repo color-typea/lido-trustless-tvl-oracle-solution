@@ -46,7 +46,7 @@ class Contracts:
         init_params, column_rotations = self._prepare_init_args_and_rotations(circuit_params)
         try:
             tx = self.verifier.verify(proof, init_params, column_rotations, self.gate.address)
-            return True
+            return tx
         except VirtualMachineError as exc:
             raise exc
 
