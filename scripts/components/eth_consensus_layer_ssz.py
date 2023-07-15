@@ -276,4 +276,5 @@ class BeaconStateModifier:
         return self
 
     def get(self) -> BeaconState:
-        return self._beacon_state
+        # Second clone is needed to "materialize" changes into the unrlying immutable data
+        return BeaconState.clone(self._beacon_state)
