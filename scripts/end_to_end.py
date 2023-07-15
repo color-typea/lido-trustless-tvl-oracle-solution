@@ -12,7 +12,7 @@ from brownie.network import accounts
 from brownie import (
     ZKTVLOracleContract, LidoLocatorMock, LidoStakingRouterMock, ZKLLVMVerifierMock,
     BeaconBlockHashKeeper, Wei,
-    lido_gate_argument_split_gen
+    GateArgument
 )
 from brownie import (ProofVerifier, PlaceholderVerifier)
 from brownie.network import gas_price
@@ -28,12 +28,10 @@ from typing import Iterator, List
 
 from scripts.components.oracle_invoker import OracleInvoker, OracleInvokerEnv
 from scripts.components.eth_node_api_stub_server import StubEthApiServer
-from scripts.components.eth_consensus_layer_ssz import BeaconStateModifier, BeaconState
+from scripts.components.eth_consensus_layer_ssz import BeaconStateModifier, BeaconState, Balances
 from scripts.components.eth_ssz_utils import make_validator, make_beacon_block_state, Constants
 
 LOGGER = logging.getLogger("main")
-
-
 
 
 @dataclass
@@ -50,8 +48,6 @@ class BeaconBlockHashRecord:
 
     def to_block_hash_keeper_call(self):
         return (self.slot, self.block_hash)
-
-
 
 
 @dataclass
@@ -79,7 +75,9 @@ class OracleReport:
         )
 
     @classmethod
-    def compute_expected(cls, block_data: BeaconBlockHashRecord, withdrawal_credentials: bytes, beacon_state: BeaconState) -> 'OracleReport':
+    def compute_expected(
+            cls, block_data: BeaconBlockHashRecord, withdrawal_credentials: bytes, beacon_state: BeaconState
+    ) -> 'OracleReport':
         balance, active, exited = 0, 0, 0
         for (idx, validator) in enumerate(beacon_state.validators):
             if validator.withdrawal_credentials != WithdrawalCredentials.LIDO:
@@ -93,7 +91,7 @@ class OracleReport:
             balance += validator_balance
 
         return cls(
-            slot = block_data.slot,
+            slot=block_data.slot,
             epoch=block_data.epoch,
             lidoWithdrawalCredentials=withdrawal_credentials,
             activeValidators=active,
@@ -111,16 +109,71 @@ class OracleProof:
         return (self.beaconBlockHash, self.zkProof)
 
 
-@dataclass
-class Contracts:
-    real_verifier: PlaceholderVerifier
-    gate: lido_gate_argument_split_gen
-    verifier: ZKLLVMVerifierMock
+class ContractsBase:
     lido_locator: LidoLocatorMock
     lido_staking_router: LidoStakingRouterMock
     block_hash_keeper: BeaconBlockHashKeeper
     tvl_contract: ZKTVLOracleContract
+
+    def __init__(self, locator, staiking_router, hash_keeper, tvl_contract):
+        self.lido_locator = locator
+        self.lido_staking_router = staiking_router
+        self.block_hash_keeper = hash_keeper
+        self.tvl_contract = tvl_contract
+
+    @property
+    def verifier(self):
+        raise NotImplementedError("Must be overridden in descendants")
+
+    @property
+    def gate_address(self):
+        raise NotImplementedError("Must be overridden in descendants")
+
+    def update_block_hash(self, next_beacon_block_hash: BeaconBlockHashRecord, beacon_state: BeaconState):
+        new_hash = Balances.get_hash_tree_root(beacon_state.balances)
+        # new_hash = next_beacon_block_hash.block_hash
+        print(f"Updating block hash to {new_hash.hex()}")
+        params = (next_beacon_block_hash.slot, new_hash)
+        self.block_hash_keeper.setBeaconBlockHash(params, {})
+
+        block_hash_bytes = to_bytes(self.block_hash_keeper.getBeaconBlockHash(next_beacon_block_hash.slot))
+        try:
+            assert (to_bytes(block_hash_bytes) == new_hash)
+        except AssertionError as e:
+            print(f"Contract: {block_hash_bytes.hex()}")
+            print(f"Expected: {new_hash.hex()}")
+            raise e
+
+    def submit_report(self, report: OracleReport, proof: OracleProof):
+        self.tvl_contract.submitReportData(
+            report.to_contract_call(), proof.to_contract_call(), CONTRACT_VERSION
+        )
+
+    def check_if_verifies(self, proof: bytes):
+        init_params, column_rotations = [], []
+        result = self.verifier.verify(proof, init_params, column_rotations, self.gate_address)
+        return result
+
+
+class MockContracts(ContractsBase):
+    _verifier: ZKLLVMVerifierMock
     verification_gate: HexStr
+
+    def __init__(
+        self, verifier: ZKLLVMVerifierMock, verification_gate: HexStr, locator, staiking_router, hash_keeper,
+        tvl_contract
+    ):
+        self._verifier = verifier
+        self.verification_gate = verification_gate
+        super().__init__(locator, staiking_router, hash_keeper, tvl_contract)
+
+    @property
+    def verifier(self):
+        return self._verifier
+
+    @property
+    def gate_address(self):
+        return self.verification_gate
 
     def set_verifier_mock(self, passes=False):
         self.verifier.setPass(passes)
@@ -132,48 +185,64 @@ class Contracts:
             print(f"Contract: {passes_check}")
             print(f"Expected: {passes}")
 
-    def update_block_hash(self, next_beacon_block_hash: BeaconBlockHashRecord):
-        print(f"Updating block hash for {next_beacon_block_hash}")
-        self.block_hash_keeper.setBeaconBlockHash(next_beacon_block_hash.to_block_hash_keeper_call(), {})
 
-        block_hash_bytes = to_bytes(self.block_hash_keeper.getBeaconBlockHash(next_beacon_block_hash.slot))
-        try:
-            assert (to_bytes(block_hash_bytes) == next_beacon_block_hash.block_hash)
-        except AssertionError as e:
-            print(f"Contract: {block_hash_bytes.hex()}")
-            print(f"Expected: {next_beacon_block_hash.block_hash.hex()}")
-            raise e
+@dataclass
+class RealContracts(ContractsBase):
+    _verifier: PlaceholderVerifier
+    gate: GateArgument
 
-    def submit_report(self, report: OracleReport, proof: OracleProof):
-        self.tvl_contract.submitReportData(
-            report.to_contract_call(), proof.to_contract_call(), CONTRACT_VERSION
-        )
+    def __init__(
+        self, verifier: PlaceholderVerifier, gate: GateArgument, locator, staiking_router, hash_keeper,
+        tvl_contract
+    ):
+        self._verifier = verifier
+        self.verification_gate = gate
+        super().__init__(locator, staiking_router, hash_keeper, tvl_contract)
 
-    def check_if_verifies(self, proof: bytes):
-        init_params, column_rotations = [], []
-        result = self.verifier.verify(proof, init_params, column_rotations, self.gate.address)
-        return result
+    @property
+    def verifier(self):
+        return self._verifier
 
+    @property
+    def gate_address(self):
+        return self.gate.address
 
-def deploy_contracts(owner, withdrawal_credentials: bytes, verification_gate: HexStr) -> Contracts:
+    def set_verifier_mock(self, passes=False):
+        LOGGER.info({'msg': "set_verifier_mock has no effect on real verifier"})
+
+USE_MOCK = True
+Contracts = MockContracts if USE_MOCK else RealContracts
+
+def deploy_contracts(owner, withdrawal_credentials: bytes) -> Contracts:
     deploy_tx_info = {"from": owner}
-    verifier_lib = ProofVerifier.deploy(deploy_tx_info)  # used by PlaceholderVerifier
-    real_verifier = PlaceholderVerifier.deploy(deploy_tx_info)
-    gate = lido_gate_argument_split_gen.deploy(deploy_tx_info)
-    verifier = ZKLLVMVerifierMock.deploy(deploy_tx_info)
+
     staking_router = LidoStakingRouterMock.deploy(withdrawal_credentials, deploy_tx_info)
     locator = LidoLocatorMock.deploy(staking_router.address, deploy_tx_info)
     hash_keeper = BeaconBlockHashKeeper.deploy(deploy_tx_info)
-    tvl_oracle_contract = ZKTVLOracleContract.deploy(
-        verifier.address, verification_gate, hash_keeper.address, locator.address, deploy_tx_info
-    )
 
-    return Contracts(real_verifier, gate, verifier, locator, staking_router, hash_keeper, tvl_oracle_contract, verification_gate)
+    if USE_MOCK:
+        # Mock verifier
+        gate_address = HexStr(secrets.token_hex(20))
+        verifier = ZKLLVMVerifierMock.deploy(deploy_tx_info)
+        tvl_oracle_contract = ZKTVLOracleContract.deploy(
+            verifier.address, gate_address, hash_keeper.address, locator.address, deploy_tx_info
+        )
+        return MockContracts(verifier, gate_address, locator, staking_router, hash_keeper, tvl_oracle_contract)
+    else:
+        # Real verifier
+        verifier_lib = ProofVerifier.deploy(deploy_tx_info)  # used by PlaceholderVerifier
+        gate = GateArgument.deploy(deploy_tx_info)
+        verifier = PlaceholderVerifier.deploy(deploy_tx_info)
+        tvl_oracle_contract = ZKTVLOracleContract.deploy(
+            verifier.address, gate.address, hash_keeper.address, locator.address, deploy_tx_info
+        )
+        return RealContracts(verifier, gate, locator, staking_router, hash_keeper, tvl_oracle_contract)
 
 
 class BlockHashProvider:
     def gen_block_hashes(self) -> Iterator[BeaconBlockHashRecord]:
         pass
+
 
 class SyntheticBlockHashProvider(BlockHashProvider):
     def gen_block_hashes(self) -> Iterator[BeaconBlockHashRecord]:
@@ -189,7 +258,8 @@ class ConsensusHttpClientBlockHashProvider(BlockHashProvider):
     _starting_slot = None
 
     BEACON_HEADERS_ENDPOINT = "/eth/v1/beacon/headers/{block_id}"
-    def __init__(self, consensus_client_url, start_N_slots_back = 30):
+
+    def __init__(self, consensus_client_url, start_N_slots_back=30):
         self._base_url = consensus_client_url
         self._start_N_slots_back = start_N_slots_back
 
@@ -260,6 +330,7 @@ container = DI()
 
 CONTRACT_VERSION = 1
 
+
 def main():
     container.server = StubEthApiServer()
     print("Starting server")
@@ -274,14 +345,15 @@ def main():
     print("Oracle operator balance:", oracle_operator.balance())
 
     owner = accounts[0]
-    verification_gate = HexStr(secrets.token_hex(20))
-    print(f"Verification gate: {verification_gate}\nWithdrawal credentials: {WithdrawalCredentials.LIDO.hex()}")
+    print(f"Withdrawal credentials: {WithdrawalCredentials.LIDO.hex()}")
 
-    container.contracts = deploy_contracts(owner, WithdrawalCredentials.LIDO, verification_gate)
+    container.contracts = deploy_contracts(owner, WithdrawalCredentials.LIDO)
 
     # deployment and  sanity check
     assert to_bytes(container.contracts.lido_staking_router.getWithdrawalCredentials()) == WithdrawalCredentials.LIDO
-    assert to_address(container.contracts.lido_locator.stakingRouter()) == container.contracts.lido_staking_router.address
+    assert to_address(
+        container.contracts.lido_locator.stakingRouter()
+    ) == container.contracts.lido_staking_router.address
 
     hash_sequence_provider = SyntheticBlockHashProvider()
     # hash_sequence_provider = ConsensusHttpClientBlockHashProvider(os.getenv('CONSENSUS_CLIENT_URI'))
@@ -322,17 +394,23 @@ def main():
     input(f"At slot {block1_meta.slot} - press enter to progress")
 
     block2_meta = next(hash_sequence)
-    bs2 = BeaconStateModifier(bs1).set_slot(block2_meta.slot).update_balance(0, initial_balances[0] + 10 ** 9).update_balance(7, 10).get()
-    step2_fail_verifier_rejects(block2_meta, bs2, expected_report = expected_report1)
+    bs2 = BeaconStateModifier(bs1).set_slot(block2_meta.slot)\
+        .update_balance(0, initial_balances[0] + 10 ** 9)\
+        .update_balance(7, 10).get()
+    step2_fail_verifier_rejects(block2_meta, bs2, expected_report=expected_report1)
     input(f"At slot {block2_meta.slot} - press enter to progress")
 
     block3_meta = next(hash_sequence)
     bs3 = BeaconStateModifier(bs2).set_slot(block3_meta.slot).modify_validator_fields(0, {"slashed": True}).get()
-    step3_fail_wrong_withdrawal_credentials(block3_meta, bs3, finalized_slot=block2_meta.slot, expected_report=expected_report1)
+    step3_fail_wrong_withdrawal_credentials(
+        block3_meta, bs3, finalized_slot=block2_meta.slot, expected_report=expected_report1
+    )
     input(f"At slot {block3_meta.slot} - press enter to progress")
 
     block4_meta = next(hash_sequence)
-    bs4 = BeaconStateModifier(bs3).set_slot(block4_meta.slot).update_balance(1, initial_balances[1] + 2 * 10 ** 9).set_validator_exited(4, block4_meta.epoch).get()
+    bs4 = BeaconStateModifier(bs3).set_slot(block4_meta.slot)\
+        .update_balance(1, initial_balances[1] + 2 * 10 ** 9)\
+        .set_validator_exited(4, block4_meta.epoch).get()
 
     step4_fail_wrong_beacon_block_hash(block4_meta, bs4, expected_report=expected_report1)
 
@@ -348,10 +426,11 @@ def main():
 def assert_report_matches(actual_report, expected_report):
     try:
         assert actual_report == expected_report
-        print(f"Report matches expected:\nExpected:{expected_report}\n Actual  : {actual_report}")
+        print(f"Report matches expected:\nExpected: {expected_report}\nActual  : {actual_report}")
     except AssertionError as e:
-        print(f"Report does not match:\nExpected:{expected_report}\n Actual  : {actual_report}")
+        print(f"Report does not match:\nExpected: {expected_report}\nActual  : {actual_report}")
         raise e
+
 
 def assert_report_dont_match(actual_report, unexpected_report):
     try:
@@ -360,21 +439,18 @@ def assert_report_dont_match(actual_report, unexpected_report):
         print(f"Report matches the unexpected value: {unexpected_report}")
         raise e
 
+
 def step1_success(block_meta, bs1: BeaconState, expected_report: OracleReport):
-    container.server.add_state(block_meta.slot, HexBytes(block_meta.block_hash), HexBytes(Constants.Genesis.BLOCK_ROOT), bs1)
+    container.server.add_state(
+        block_meta.slot, HexBytes(block_meta.block_hash), HexBytes(Constants.Genesis.BLOCK_ROOT), bs1
+    )
     container.server.set_chain_pointers(head=block_meta.slot, finalized=block_meta.slot, justified=block_meta.slot)
-    container.contracts.update_block_hash(block_meta)
+    container.contracts.update_block_hash(block_meta, bs1)
     container.contracts.set_verifier_mock(passes=True)
 
     input(f"Ready to run oracle - press enter to start...")
     container.oracle_invoker.run()
     print(f"Oracle run successfully")
-
-    # report1 = OracleReport(block_meta.slot, block_meta.epoch, WithdrawalCredentials.LIDO, 10, 1, Wei(2 * 10 ** 18))
-    # report1 = expected_report
-    # proof = OracleProof(block_meta.block_hash, bytes.fromhex("abcdef"))
-
-    # container.contracts.tvl_contract.submitReportData(report1.to_contract_call(), proof.to_contract_call(), CONTRACT_VERSION)
 
     print(f"Checking the report...")
     latest_report = OracleReport.reconstruct_from_contract(container.contracts.tvl_contract.getLastReport())
@@ -382,11 +458,12 @@ def step1_success(block_meta, bs1: BeaconState, expected_report: OracleReport):
 
     return latest_report
 
+
 def step2_fail_verifier_rejects(block_meta, state: BeaconState, expected_report: OracleReport):
     # this is wrong - should not use HexBytes(block_meta.block_hash) for parent, but I'm making a quick shortcut here
     container.server.add_state(block_meta.slot, HexBytes(block_meta.block_hash), HexBytes(block_meta.block_hash), state)
     container.server.set_chain_pointers(head=block_meta.slot)
-    container.contracts.update_block_hash(block_meta)
+    container.contracts.update_block_hash(block_meta, state)
     container.contracts.set_verifier_mock(passes=False)
 
     report2 = OracleReport(
@@ -395,7 +472,9 @@ def step2_fail_verifier_rejects(block_meta, state: BeaconState, expected_report:
     proof = OracleProof(block_meta.block_hash, bytes.fromhex("abcdef"))
 
     try:
-        container.contracts.tvl_contract.submitReportData(report2.to_contract_call(), proof.to_contract_call(), CONTRACT_VERSION)
+        container.contracts.tvl_contract.submitReportData(
+            report2.to_contract_call(), proof.to_contract_call(), CONTRACT_VERSION
+        )
         assert False, "Report should have been rejected"
     except VirtualMachineError:
         pass
@@ -413,14 +492,16 @@ def step3_fail_wrong_withdrawal_credentials(
     # this is wrong - should not use HexBytes(block_meta.block_hash) for parent, but I'm making a quick shortcut here
     container.server.add_state(block_meta.slot, HexBytes(block_meta.block_hash), HexBytes(block_meta.block_hash), state)
     container.server.set_chain_pointers(head=block_meta.slot, finalized=finalized_slot)
-    container.contracts.update_block_hash(block_meta)
+    container.contracts.update_block_hash(block_meta, state)
     container.contracts.set_verifier_mock(passes=True)
 
     report3 = OracleReport(block_meta.slot, block_meta.epoch, WithdrawalCredentials.OTHER, 0, 100, Wei(10000))
     proof = OracleProof(block_meta.block_hash, bytes.fromhex("abcdef"))
 
     try:
-        container.contracts.tvl_contract.submitReportData(report3.to_contract_call(), proof.to_contract_call(), CONTRACT_VERSION)
+        container.contracts.tvl_contract.submitReportData(
+            report3.to_contract_call(), proof.to_contract_call(), CONTRACT_VERSION
+        )
         assert False, "Report should have been rejected"
     except VirtualMachineError:
         pass
@@ -433,13 +514,13 @@ def step3_fail_wrong_withdrawal_credentials(
 
 
 def step4_fail_wrong_beacon_block_hash(
-        block_meta: BeaconBlockHashRecord, bs4: BeaconState, expected_report: OracleReport
+        block_meta: BeaconBlockHashRecord, state: BeaconState, expected_report: OracleReport
 ):
     # this is wrong - should not use HexBytes(block_meta.block_hash) for parent, but I'm making a quick shortcut here
-    container.server.add_state(block_meta.slot, HexBytes(block_meta.block_hash), HexBytes(block_meta.block_hash), bs4)
+    container.server.add_state(block_meta.slot, HexBytes(block_meta.block_hash), HexBytes(block_meta.block_hash), state)
     container.server.set_chain_pointers(head=block_meta.slot, finalized=block_meta.slot, justified=block_meta.slot)
 
-    container.contracts.update_block_hash(block_meta)
+    container.contracts.update_block_hash(block_meta, state)
     container.contracts.set_verifier_mock(passes=True)
 
     report4 = OracleReport(block_meta.slot, block_meta.epoch, WithdrawalCredentials.LIDO, 0, 100, Wei(10000))
