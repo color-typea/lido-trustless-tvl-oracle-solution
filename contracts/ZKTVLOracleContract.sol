@@ -5,6 +5,7 @@ import "../interfaces/IVerifier.sol";
 import "../interfaces/ILidoStakingRouter.sol";
 import "../interfaces/ILidoLocator.sol";
 import "../interfaces/IBeaconBlockHashProvider.sol";
+import "./CircuitParams.sol";
 
 
 contract ZKTVLOracleContract {
@@ -65,7 +66,12 @@ contract ZKTVLOracleContract {
         bytes32 expectedBeaconBlockHash = getBeaconBlockHash(report.slot);
         bytes32 expectedWithdrawalAddress = getExpectedWithdrawalCredentials();
 
-        _require(proof.beaconBlockHash == expectedBeaconBlockHash, report, "Reported beacon block hash didn't match actual one");
+        // Temporarily, balances hash is used instead of beacon block hash
+        _require(
+            proof.beaconBlockHash == expectedBeaconBlockHash,
+            report,
+            "Reported balances hash didn't match actual one"
+        );
         _require(
             report.lidoWithdrawalCredentials == expectedWithdrawalAddress,
             report,
@@ -104,8 +110,8 @@ contract ZKTVLOracleContract {
     function verifyZKLLVMProof(
         address gate, OracleReport memory report, OracleProof memory proof
     ) internal view returns (bool) {
-        uint256[] memory init_params;
-        int256[][] memory columns_rotations;
+        uint256[] memory init_params = CircuitParams.get_init_params();
+        int256[][] memory columns_rotations = CircuitParams.get_column_rotations();
         return zkllvmVerifier.verify(proof.zkProof, init_params, columns_rotations, gate);
     }
 
