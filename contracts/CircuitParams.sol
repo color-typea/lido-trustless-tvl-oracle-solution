@@ -82,71 +82,81 @@ library CircuitParams {
         return (init_args);
     }
 
-    function get_column_rotations()
-    internal pure returns (int256[][] memory) {
-        int256[][] memory column_rotations = new int256[][](0);
-        return (column_rotations);
+    function makeDyn1(int256 value) internal pure returns (int256[] memory) {
+        int256[] memory rslt = new int256[](1);
+        rslt[0] = value;
+        return rslt;
     }
 
-//    function get_column_rotations()
-//    internal pure returns (uint256[][] memory column_rotations) {
-//
-//        column_rotations = [
-//            uint256[]([- 1, 0, 1]),
-//            uint256[]([- 1, 0, 1]),
-//            uint256[]([- 1, 0, 1]),
-//            uint256[]([- 1, 0, 1]),
-//            uint256[]([- 1, 0, 1]),
-//            uint256[]([- 1, 0, 1]),
-//            uint256[]([- 1, 0, 1]),
-//            uint256[]([- 1, 0, 1]),
-//            uint256[]([- 1, 0, 1]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0]),
-//            uint256[]([0])
-//        ];
-//    }
+    function makeDyn3(int256 value1, int256 value2, int256 value3) internal pure returns (int256[] memory) {
+        int256[] memory rslt = new int256[](3);
+        rslt[0] = value1;
+        rslt[1] = value2;
+        rslt[2] = value3;
+        return rslt;
+    }
+
+    // TODO: this literally cries to be codegen'ed
+    // or at least https://github.com/ethereum/solidity/issues/11879
+    function get_column_rotations()
+    internal pure returns (int256[][] memory) {
+        int256[][] memory column_rotations = new int256[][](55);
+        uint idx = 0;
+        column_rotations[idx++] = makeDyn3(-1, 0, 1);
+        column_rotations[idx++] = makeDyn3(-1, 0, 1);
+        column_rotations[idx++] = makeDyn3(-1, 0, 1);
+        column_rotations[idx++] = makeDyn3(-1, 0, 1);
+        column_rotations[idx++] = makeDyn3(-1, 0, 1);
+        column_rotations[idx++] = makeDyn3(-1, 0, 1);
+        column_rotations[idx++] = makeDyn3(-1, 0, 1);
+        column_rotations[idx++] = makeDyn3(-1, 0, 1);
+        column_rotations[idx++] = makeDyn3(-1, 0, 1);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = makeDyn1(0);
+        return column_rotations;
+    }
 }

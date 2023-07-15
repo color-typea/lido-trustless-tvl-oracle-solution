@@ -32,7 +32,7 @@ from scripts.components.eth_ssz_utils import make_validator, make_beacon_block_s
 
 LOGGER = logging.getLogger("main")
 CONTRACT_VERSION = 1
-USE_MOCK = True
+USE_MOCK = False
 
 @dataclass
 class BeaconBlockHashRecord:
