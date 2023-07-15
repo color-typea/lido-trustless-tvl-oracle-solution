@@ -3,7 +3,7 @@
 
 // See contracts/COMPILERS.md
 // solhint-disable-next-line
-pragma solidity >=0.4.24 <0.9.0;
+pragma solidity >=0.8.4;
 
 // https://github.com/lidofinance/lido-dao/blob/master/contracts/common/interfaces/ILidoLocator.sol
 // Partial interface, only including things we actually need

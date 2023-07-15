@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0.
 
-pragma solidity ^0.8.0;
+pragma solidity >=0.8.4;
 
 // Lido staiking router
 // https://github.com/lidofinance/lido-dao/blob/master/contracts/0.8.9/StakingRouter.sol
