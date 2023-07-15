@@ -12,11 +12,10 @@ from brownie.network import accounts
 from brownie import (
     ZKTVLOracleContract, LidoLocatorMock, LidoStakingRouterMock, ZKLLVMVerifierMock,
     BeaconBlockHashKeeper, Wei,
-    GateArgument
+    GateArgument, Gate0, Gate4, CircuitParams
 )
 from brownie import (ProofVerifier, PlaceholderVerifier)
 from brownie.network import gas_price
-from brownie.network.gas.strategies import LinearScalingStrategy
 
 from brownie.convert import to_bytes, to_address, to_bool, to_int
 from eth_typing import HexStr
@@ -32,7 +31,8 @@ from scripts.components.eth_consensus_layer_ssz import BeaconStateModifier, Beac
 from scripts.components.eth_ssz_utils import make_validator, make_beacon_block_state, Constants
 
 LOGGER = logging.getLogger("main")
-
+CONTRACT_VERSION = 1
+USE_MOCK = True
 
 @dataclass
 class BeaconBlockHashRecord:
@@ -210,7 +210,7 @@ class RealContracts(ContractsBase):
     def set_verifier_mock(self, passes=False):
         LOGGER.info({'msg': "set_verifier_mock has no effect on real verifier"})
 
-USE_MOCK = True
+
 Contracts = MockContracts if USE_MOCK else RealContracts
 
 def deploy_contracts(owner, withdrawal_credentials: bytes) -> Contracts:
@@ -231,6 +231,9 @@ def deploy_contracts(owner, withdrawal_credentials: bytes) -> Contracts:
     else:
         # Real verifier
         verifier_lib = ProofVerifier.deploy(deploy_tx_info)  # used by PlaceholderVerifier
+        gate0 = Gate0.deploy(deploy_tx_info)
+        gate4 = Gate4.deploy(deploy_tx_info)
+        circuit_params = CircuitParams.deploy(deploy_tx_info)
         gate = GateArgument.deploy(deploy_tx_info)
         verifier = PlaceholderVerifier.deploy(deploy_tx_info)
         tvl_oracle_contract = ZKTVLOracleContract.deploy(
@@ -327,9 +330,6 @@ class DI:
 
 
 container = DI()
-
-CONTRACT_VERSION = 1
-
 
 def main():
     container.server = StubEthApiServer()
