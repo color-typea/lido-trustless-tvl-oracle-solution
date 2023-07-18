@@ -3,6 +3,8 @@ import io
 import dataclasses
 
 import logging
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
 
 import ssz
 from hexbytes import HexBytes

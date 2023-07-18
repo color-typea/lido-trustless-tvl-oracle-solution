@@ -26,10 +26,7 @@ contract ZKTVLOracleContract {
     event ReportAccepted(
         OracleReport report
     );
-    event ReportRejected(
-        OracleReport report,
-        string reason
-    );
+
 
     OracleReport latestReport;
 
@@ -40,6 +37,8 @@ contract ZKTVLOracleContract {
     uint public constant contractVersion = 1;
 
     error UnexpectedContractVersion(uint256 expected, uint256 received);
+    // This should later become an error
+    event ReportRejected(OracleReport report, string reason);
 
     constructor(
         address zkllvmVerifier_,
@@ -84,6 +83,7 @@ contract ZKTVLOracleContract {
         );
 
         latestReport = report;
+        emit ReportAccepted(report);
     }
 
     // Compatible with Versioned.sol, intended to be later replaced by complete versioning solution
@@ -126,8 +126,9 @@ contract ZKTVLOracleContract {
 
     function _require(bool condition, OracleReport memory report, string memory reason) internal {
         if (!condition) {
+            // this is largely for documentation purposes, events in rejected transactions are discarded
             emit ReportRejected(report, reason);
-            require(false, reason);
+            revert(reason);
         }
     }
 }

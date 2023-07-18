@@ -19,6 +19,7 @@ class OracleInvokerEnv:
     bs_api_uri: str
     locator_address: HexStr
     zktvk_contract_address: HexStr
+    log_level: str
 
     def to_env_dict(self) -> dict[str, str]:
         return {
@@ -27,6 +28,7 @@ class OracleInvokerEnv:
             "EXECUTION_CLIENT_URI": self.execution_api_uri,
             "LIDO_LOCATOR_ADDRESS": self.locator_address,
             "ZKTVL_CONTRACT_ADDRESS": self.zktvk_contract_address,
+            "LOGLEVEL": self.log_level
         }
 
 
