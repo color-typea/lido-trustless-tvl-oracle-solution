@@ -1,8 +1,6 @@
-import subprocess
 
 import os
 
-import requests
 from brownie.exceptions import VirtualMachineError
 from brownie.network.account import LocalAccount
 from dataclasses import dataclass
@@ -25,6 +23,9 @@ from hexbytes import HexBytes
 
 from typing import Iterator, List, Tuple
 
+from scripts.components.block_hash_provider import SyntheticBlockHashProvider, BeaconBlockHashRecord
+from scripts.components.oracle import OracleReport, OracleProof, WithdrawalCredentials, BeaconStateSummary
+from scripts.components.utils import Printer, with_timing
 from scripts.components.oracle_invoker import OracleInvoker, OracleInvokerEnv
 from scripts.components.eth_node_api_stub_server import StubEthApiServer
 from scripts.components.eth_consensus_layer_ssz import BeaconStateModifier, BeaconState, Balances, Validator
@@ -35,139 +36,7 @@ LOGGER = logging.getLogger("main")
 CONTRACT_VERSION = 1
 USE_MOCK = False
 
-@dataclass
-class BeaconBlockHashRecord:
-    slot: int
-    block_hash: HexBytes
-
-    @property
-    def epoch(self):
-        return self.slot // 32
-
-    def hash_str(self):
-        return self.block_hash.hex()
-
-    def to_block_hash_keeper_call(self):
-        return (self.slot, self.block_hash)
-
-
-@dataclass
-class OracleReport:
-    slot: int
-    epoch: int
-    lidoWithdrawalCredentials: bytes
-    activeValidators: int
-    exitedValidators: int
-    totalValueLocked: int
-
-    def to_contract_call(self):
-        return (self.slot, self.epoch, self.lidoWithdrawalCredentials, self.activeValidators, self.exitedValidators,
-                self.totalValueLocked)
-
-    @classmethod
-    def reconstruct_from_contract(cls, raw_values):
-        return cls(
-            slot=to_int(raw_values[0]),
-            epoch=to_int(raw_values[1]),
-            lidoWithdrawalCredentials=to_bytes(raw_values[2]),
-            activeValidators=to_int(raw_values[3]),
-            exitedValidators=to_int(raw_values[4]),
-            totalValueLocked=to_int(raw_values[5]),
-        )
-
-    @classmethod
-    def compute_expected(
-            cls, block_data: BeaconBlockHashRecord, withdrawal_credentials: bytes, beacon_state: BeaconState
-    ) -> 'OracleReport':
-        balance, active, exited = 0, 0, 0
-        for (idx, validator) in enumerate(beacon_state.validators):
-            if validator.withdrawal_credentials != WithdrawalCredentials.LIDO:
-                continue
-
-            if validator.exit_epoch <= block_data.epoch:
-                exited += 1
-            elif validator.activation_eligibility_epoch <= block_data.epoch:
-                active += 1
-            validator_balance = beacon_state.balances[idx]
-            balance += validator_balance
-
-        return cls(
-            slot=block_data.slot,
-            epoch=block_data.epoch,
-            lidoWithdrawalCredentials=withdrawal_credentials,
-            activeValidators=active,
-            exitedValidators=exited,
-            totalValueLocked=balance
-        )
-
-    def __str__(self):
-        return f"OracleReport(slot={self.slot}, epoch={self.epoch}, " \
-               f"lidoWithdrawalCredentials={self.lidoWithdrawalCredentials.hex()[:5]}...{self.lidoWithdrawalCredentials.hex()[-6:]}, " \
-               f"activeValidators={self.activeValidators}, " \
-               f"exitedValidators={self.exitedValidators}, " \
-               f"totalValueLocked={self.totalValueLocked / 10**9}Gwei)"
-
-
-class Printer:
-    MAGENTA = '\033[95m'
-    LIGHT_BLUE = '\033[94m'
-    BRIGHT_CYAN = '\033[96m'
-    BRIGHT_GREEN = '\033[92m'
-    GREEN = '\033[42m'
-    BRIGHT_YELLOW = '\033[93m'
-    YELLOW = '\033[33m'
-    BRIGHT_RED = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
-
-    def print(self, message, color=None):
-        if color is not None:
-            msg = f"{color}{message}{self.ENDC}"
-        else:
-            msg = message
-        print(msg)
-
-    def info(self, message):
-        self.print(message)
-
-    def wait(self, message):
-        msg = f"{self.YELLOW}{message}{self.ENDC}"
-        input(msg)
-
-    def detail(self, message, level=1):
-        msgs = message.split("\n")
-        indent = " " * 2 * level
-        padded = [f"{indent}{msg}" for msg in msgs]
-        self.print("\n".join(padded))
-
-    def success(self, message):
-        self.print(message, self.GREEN)
-
-    def expected_fail(self, message):
-        self.print(message, self.BRIGHT_CYAN)
-
-    def attention(self, message):
-        self.print(message, self.BRIGHT_YELLOW)
-
-    def error(self, message):
-        self.print(message, self.BRIGHT_RED)
-
-    def header(self, message):
-        msg = f"{self.BOLD}{message}{self.ENDC}"
-        print(msg)
-
-
 printer = Printer()
-
-@dataclass
-class OracleProof:
-    beaconBlockHash: bytes
-    zkProof: bytes
-
-    def to_contract_call(self):
-        return (self.beaconBlockHash, self.zkProof)
-
 
 class ContractsBase:
     lido_locator: LidoLocatorMock
@@ -304,62 +173,6 @@ def deploy_contracts(owner, withdrawal_credentials: bytes) -> Contracts:
         return RealContracts(verifier, gate, locator, staking_router, hash_keeper, tvl_oracle_contract)
 
 
-class BlockHashProvider:
-    def gen_block_hashes(self) -> Iterator[BeaconBlockHashRecord]:
-        pass
-
-
-class SyntheticBlockHashProvider(BlockHashProvider):
-    def gen_block_hashes(self) -> Iterator[BeaconBlockHashRecord]:
-        slot_number = 1
-        while True:
-            next_hash = secrets.token_bytes(32)
-            yield BeaconBlockHashRecord(slot_number, HexBytes(next_hash))
-            slot_number += 1
-
-
-class ConsensusHttpClientBlockHashProvider(BlockHashProvider):
-    _final_slot = None
-    _starting_slot = None
-
-    BEACON_HEADERS_ENDPOINT = "/eth/v1/beacon/headers/{block_id}"
-
-    def __init__(self, consensus_client_url, start_N_slots_back=30):
-        self._base_url = consensus_client_url
-        self._start_N_slots_back = start_N_slots_back
-
-    def _init(self):
-        block_header_json = self._get_block_header(state_id='head')
-        head_slot_number = int(block_header_json["header"]["message"]["slot"])
-        self._final_slot = head_slot_number
-        self._starting_slot = head_slot_number - self._start_N_slots_back
-
-    def _get_block_header(self, state_id):
-        url = self._base_url + self.BEACON_HEADERS_ENDPOINT.format(block_id=state_id)
-        with requests.get(url) as response:
-            response.raise_for_status()
-            json_response = response.json()
-            return json_response["data"]
-
-    def gen_block_hashes(self) -> Iterator[BeaconBlockHashRecord]:
-        for slot_number in self.slot_range:
-            block_header = self._get_block_header(slot_number)
-            block_hash = block_header["root"]
-            block_hash_bytes = HexBytes(block_hash)
-            yield BeaconBlockHashRecord(slot_number, block_hash_bytes)
-
-    @property
-    def slot_range(self) -> range:
-        if self._final_slot is None:
-            self._init()
-        return range(self._starting_slot, self._final_slot)
-
-
-class WithdrawalCredentials:
-    LIDO = b'\x01\x02' * 16
-    OTHER = b'\xff' * 32
-
-
 class DI:
     def __init__(self):
         self._contracts = None
@@ -392,73 +205,6 @@ class DI:
 
 
 container = DI()
-
-@dataclass
-class BeaconStateSummary:
-    label: str
-    balances: List[int]
-    validator_states: List[Tuple[str, str]]
-
-    @classmethod
-    def compute(cls, label: str, block_data: BeaconBlockHashRecord, state: BeaconState) -> 'BeaconStateSummary':
-        validator_states = [
-            (
-                validator_state_for_print(validator, block_data),
-                "Lido" if validator.withdrawal_credentials == WithdrawalCredentials.LIDO else "Other"
-            ) for validator in state.validators
-        ]
-        return cls(
-            label=label, balances=list(state.balances), validator_states=validator_states
-        )
-
-    def difference(self, other: 'BeaconStateSummary') -> List[str]:
-        result = []
-        for idx in range(len(self.balances)):
-            this_balance = self.balances[idx]
-            other_balance = other.balances[idx]
-            if this_balance != other_balance:
-                result.append(f"Balance@{idx:02}: {this_balance - other_balance}")
-        for idx in range(len(self.balances), len(other.balances)):
-            result.append(f"New balance@{idx:02}: {other.balances[idx]}")
-
-        for idx in range(len(self.validator_states)):
-            this_state, this_is_lido = self.validator_states[idx]
-            other_state, other_is_lido = other.validator_states[idx]
-            if this_state != other_state:
-                result.append(f"Validator@{idx:02} changed state: to {this_state}")
-            if this_is_lido != other_is_lido:
-                result.append(f"Validator@{idx:02} changed 'ownership' to {this_is_lido}")
-        for idx in range(len(self.validator_states), len(other.validator_states)):
-            result.append(f"New validator@{idx:02}: {other.validator_states[idx]}")
-
-        return result
-
-    def print_difference(self, other):
-        printer.info(f"BeaconState changes between {self.label} (new) and {other.label} (old):")
-        for line in self.difference(other):
-            printer.detail(line)
-
-    def __str__(self):
-        result = []
-        result.append("|Index|State   |Is Lido|Balance    |")
-        for (idx, data) in enumerate(zip(self.balances, self.validator_states)):
-            balance, validator_tuple = data
-            state, is_lido = validator_tuple
-            bal = balance / 10 ** 9
-            result.append(f"|{idx:5}|{state:8}|{is_lido:7}|{bal:7}Gwei|")
-
-        result.append("|Index|State   |Is Lido|Balance    |")
-
-        return "\n".join(result)
-
-def validator_state_for_print(validator: Validator, block_data: BeaconBlockHashRecord):
-    if validator.exit_epoch <= block_data.epoch:
-        return "EXITED"
-    elif validator.activation_eligibility_epoch <= block_data.epoch:
-        return "ACTIVE"
-    else:
-        return "PENDING"
-
 
 def main():
     server = StubEthApiServer()
@@ -503,7 +249,7 @@ def _run_with_server(server):
     )
     initial_balances = [10 * (10 ** 9) for _ in range(5)] + [1000 * (10 ** 9) for _ in range(5)]
 
-    oracle_invoker = OracleInvoker(
+    container.oracle_invoker = OracleInvoker(
         python=os.getenv('ORACLE_PYTHON'),
         cwd=os.getenv('ORACLE_CWD'),
         script=os.getenv('ORACLE_MODULE'),
@@ -519,7 +265,6 @@ def _run_with_server(server):
         # args=["-d"],
         named_args={"-e": ".env"}
     )
-    container.oracle_invoker = oracle_invoker
     # oracle_invoker.print_env_and_command()
     # input("Printed oracle invocation command - press enter to continue")
 
@@ -575,7 +320,7 @@ def _run_with_server(server):
     printer.header("======== Step 4.2 - run oracle, report accepted ========")
     expected_report4 = OracleReport.compute_expected(block4_meta, WithdrawalCredentials.LIDO, bs4)
     printer.detail(str(state_summary4))
-    state_summary4.print_difference(state_summary1)
+    state_summary4.print_difference(state_summary1, printer)
     step4_success(expected_report=expected_report4)
     printer.header("======== End step 4.2 - run oracle, report accepted ========")
     printer.wait(f"Press enter to finish")
@@ -616,7 +361,8 @@ def step1_success(block_meta, bs1: BeaconState, expected_report: OracleReport):
 
     printer.wait(f"Ready to run oracle - press enter to start...")
     printer.info(f"Running oracle - this should take a few seconds")
-    container.oracle_invoker.run()
+    with with_timing(printer, "Run oracle"):
+        container.oracle_invoker.run()
     printer.success(f"Oracle run successful, report accepted, proof verifies")
 
     latest_report = OracleReport.reconstruct_from_contract(container.contracts.tvl_contract.getLastReport())
@@ -696,8 +442,12 @@ def step4_fail_wrong_balances_hash(
     container.contracts.update_block_hash(block_meta, state)
     container.contracts.set_verifier_mock(passes=True)
 
+    with open(os.path.join(CURDIR, "proof.hex"), "r") as proof_bin_hex:
+        proof_hex = proof_bin_hex.read()
+        proof = bytes.fromhex(proof_hex[2:])
+
     report4 = OracleReport(block_meta.slot, block_meta.epoch, WithdrawalCredentials.LIDO, 0, 100, Wei(10000))
-    proof = OracleProof(b'\x00' * 32, bytes.fromhex("abcdef"))
+    proof = OracleProof(b'\x00' * 32, proof)
     try:
         printer.info(f"Submitting fake Report4 with incorrect balances merkle hash")
         printer.detail(
@@ -719,7 +469,8 @@ def step4_fail_wrong_balances_hash(
 def step4_success(expected_report: OracleReport):
     printer.wait(f"Ready to run oracle - press enter to start...")
     printer.info(f"Running oracle - this should take a few seconds")
-    container.oracle_invoker.run()
+    with with_timing(printer, "Run oracle"):
+        container.oracle_invoker.run()
     printer.success(f"Oracle run successful, report accepted, proof verifies")
 
     latest_report = OracleReport.reconstruct_from_contract(container.contracts.tvl_contract.getLastReport())

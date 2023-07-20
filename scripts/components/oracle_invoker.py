@@ -1,7 +1,5 @@
 import sys
 
-import os
-
 from typing import List, Optional
 
 import subprocess
@@ -65,10 +63,12 @@ class OracleInvoker:
             value = value | {"-a": self.account}
         return value
 
-    def _get_subprocess_args_kwargs(self, **kwargs):
+    def _get_subprocess_args_kwargs(self, slot: int = None, **kwargs):
         args = [self.python, "-m", self.script] + self.positional_args + self._flatten_named_args(
             self.named_args
         ) + self._flatten_named_args(kwargs)
+        if slot is not None:
+            args += ['-s', slot]
         subprocess_kwargs = {
             "env": self.env.to_env_dict(),
             "check": True,
@@ -82,8 +82,8 @@ class OracleInvoker:
             subprocess_kwargs = subprocess_kwargs | pipe_kwargs
         return args, subprocess_kwargs
 
-    def run(self, **kwargs):
-        args, subprocess_kwargs = self._get_subprocess_args_kwargs(**kwargs)
+    def run(self, slot:int = None, **kwargs):
+        args, subprocess_kwargs = self._get_subprocess_args_kwargs(slot, **kwargs)
         process = subprocess.run(args, **subprocess_kwargs)
         if process.returncode != 0:
             raise Exception(f"Failed to run oracle - retcode {process.returncode}")
