@@ -9,7 +9,8 @@ from scripts.components.eth_consensus_layer_ssz import Validator, BeaconState
 
 
 class WithdrawalCredentials:
-    LIDO = b'\x01\x02' * 16
+    # LIDO = b'\x01\x02' * 16
+    LIDO = bytes.fromhex("010000000000000000000000b9d7934878b5fb9610b3fe8a5e441e8fad7e293f")
     OTHER = b'\xff' * 32
 
 @dataclass
