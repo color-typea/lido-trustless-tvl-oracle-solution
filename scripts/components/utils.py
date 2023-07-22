@@ -53,7 +53,7 @@ class Printer:
         print(msg)
 
     def time(self, operation: str, time_spent: float):
-        print(f"{self.BLUE}{operation} took {self.BOLD}{time_spent * 1000:.2f}ms{self.ENDC}")
+        print(f"{self.BLUE}{operation} took {self.BOLD}{time_spent:.4f}s{self.ENDC}")
 
 
 @contextmanager
