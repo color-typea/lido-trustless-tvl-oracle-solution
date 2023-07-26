@@ -132,7 +132,14 @@ class StubEthApiServer:
                 download_name=f"beacon_state_{block.slot}.ssz"
             )
         elif accept_header == 'application/json':
-            json_data = json.dumps(beacon_state, cls=JsonEncoder)
+            finalized = block.slot <= self.states["finalized"]
+            state_data = json.dumps(beacon_state, cls=JsonEncoder)
+            json_data = {
+                "version": "phase0",
+                "execution_optimistic": False,
+                "finalized": finalized,
+                "data": state_data
+            }
             return jsonify(json_data)
         else:
             return 'Unsupported Media Type', 415
