@@ -1,6 +1,3 @@
-import json
-
-import io
 import ssz
 
 from ssz.hashable_container import HashableContainer
@@ -227,7 +224,7 @@ class BeaconState(EnhancedHashableContainer):
     ]
 
     @classmethod
-    def deserialize(cls, ssz_bytes: BinaryIO) -> 'BeaconState':
+    def from_ssz(cls, ssz_bytes: bytes) -> 'BeaconState':
         return ssz.decode(ssz_bytes, cls)
 
 

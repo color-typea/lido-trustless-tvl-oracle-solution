@@ -4,7 +4,7 @@ from brownie.convert import to_bytes, to_address, to_bool, to_int
 from typing import List, Tuple
 from dataclasses import dataclass
 
-from scripts.components.block_hash_provider import BeaconBlockHashRecord
+from scripts.components.concensus_client import BeaconBlockHashRecord
 from scripts.components.eth_consensus_layer_ssz import Validator, BeaconState
 
 

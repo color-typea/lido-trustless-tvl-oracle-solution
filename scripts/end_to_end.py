@@ -21,14 +21,12 @@ from eth_typing import HexStr
 import secrets
 from hexbytes import HexBytes
 
-from typing import Iterator, List, Tuple
-
-from scripts.components.block_hash_provider import SyntheticBlockHashProvider, BeaconBlockHashRecord
+from scripts.components.block_hash_provider import BeaconBlockHashRecord, SyntheticBlockHashProvider
 from scripts.components.oracle import OracleReport, OracleProof, WithdrawalCredentials, BeaconStateSummary
 from scripts.components.utils import Printer, with_timing
 from scripts.components.oracle_invoker import OracleInvoker, OracleInvokerEnv
 from scripts.components.eth_node_api_stub_server import StubEthApiServer
-from scripts.components.eth_consensus_layer_ssz import BeaconStateModifier, BeaconState, Balances, Validator
+from scripts.components.eth_consensus_layer_ssz import BeaconState, Balances, BeaconStateModifier
 from scripts.components.eth_ssz_utils import make_validator, make_beacon_block_state, Constants
 
 CURDIR = os.path.dirname(__file__)
