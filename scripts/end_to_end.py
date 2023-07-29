@@ -10,7 +10,7 @@ from brownie.network import accounts
 from brownie import (
     ZKTVLOracleContract, LidoLocatorMock, LidoStakingRouterMock, ZKLLVMVerifierMock,
     BeaconBlockHashKeeper, Wei,
-    GateArgument, Gate0, Gate4, CircuitParams
+    GateArgument, Gate0, Gate6, CircuitParams
 )
 from brownie import (ProofVerifier, PlaceholderVerifier)
 from brownie.network import gas_price
@@ -161,7 +161,7 @@ def deploy_contracts(owner, withdrawal_credentials: bytes) -> Contracts:
         # Real verifier
         verifier_lib = ProofVerifier.deploy(deploy_tx_info)  # used by PlaceholderVerifier
         gate0 = Gate0.deploy(deploy_tx_info)
-        gate4 = Gate4.deploy(deploy_tx_info)
+        gate6 = Gate6.deploy(deploy_tx_info)
         circuit_params = CircuitParams.deploy(deploy_tx_info)
         gate = GateArgument.deploy(deploy_tx_info)
         verifier = PlaceholderVerifier.deploy(deploy_tx_info)

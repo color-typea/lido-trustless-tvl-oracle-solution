@@ -25,11 +25,11 @@ import "../../../contracts/commitments/batched_lpc_verifier.sol";
 import "../../../contracts/interfaces/gate_argument.sol";
 
 import "./gate0.sol";
-import "./gate4.sol";
+import "./gate6.sol";
 
 
 contract GateArgument  is IGateArgument{
-    uint256 constant GATES_N = 12;
+    uint256 constant GATES_N = 14;
 
     struct local_vars_type{
         // 0x0
@@ -95,7 +95,7 @@ contract GateArgument  is IGateArgument{
         local_vars.gates_evaluation = 0;
 
 		(local_vars.gates_evaluation, local_vars.theta_acc) = Gate0.evaluate_gate_be(gate_params, local_vars);
-		(local_vars.gates_evaluation, local_vars.theta_acc) = Gate4.evaluate_gate_be(gate_params, local_vars);
+		(local_vars.gates_evaluation, local_vars.theta_acc) = Gate6.evaluate_gate_be(gate_params, local_vars);
 
 
         gates_evaluation = local_vars.gates_evaluation;

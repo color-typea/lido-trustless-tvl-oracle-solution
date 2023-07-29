@@ -23,7 +23,7 @@ pragma solidity >=0.8.4;
 import "../../../contracts/types.sol";
 import "./gate_argument.sol";
 
-library Gate4{
+library Gate6{
     uint256 constant MODULUS_OFFSET = 0x0;
     uint256 constant THETA_OFFSET = 0x20;
 
@@ -67,7 +67,7 @@ library Gate4{
                 result := mload(add(add(mload(add(ptr, SELECTOR_EVALUATIONS_OFFSET)), 0x20), mul(0x20, idx)))
             }
 
-			//Gate4
+			//Gate6
 			mstore(add(local_vars, GATE_EVAL_OFFSET), 0)
 			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET), 0)
 			terms:=get_witness_i_by_rotation_idx(0,0, local_vars)
@@ -129,10 +129,10 @@ library Gate4{
 			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET),addmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),terms,modulus))
 			mstore(add(local_vars, GATE_EVAL_OFFSET),addmod(mload(add(local_vars, GATE_EVAL_OFFSET)),mulmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),theta_acc,modulus),modulus))
 			theta_acc := mulmod(theta_acc, theta, modulus)
-			mstore(add(local_vars, GATE_EVAL_OFFSET),mulmod(mload(add(local_vars, GATE_EVAL_OFFSET)),get_selector_i(4,local_vars),modulus))
+			mstore(add(local_vars, GATE_EVAL_OFFSET),mulmod(mload(add(local_vars, GATE_EVAL_OFFSET)),get_selector_i(6,local_vars),modulus))
 			gates_evaluation := addmod(gates_evaluation,mload(add(local_vars, GATE_EVAL_OFFSET)),modulus)
 
-			//Gate5
+			//Gate7
 			mstore(add(local_vars, GATE_EVAL_OFFSET), 0)
 			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET), 0)
 			terms:=get_witness_i_by_rotation_idx(0,1, local_vars)
@@ -157,10 +157,10 @@ library Gate4{
 			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET),addmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),terms,modulus))
 			mstore(add(local_vars, GATE_EVAL_OFFSET),addmod(mload(add(local_vars, GATE_EVAL_OFFSET)),mulmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),theta_acc,modulus),modulus))
 			theta_acc := mulmod(theta_acc, theta, modulus)
-			mstore(add(local_vars, GATE_EVAL_OFFSET),mulmod(mload(add(local_vars, GATE_EVAL_OFFSET)),get_selector_i(9,local_vars),modulus))
+			mstore(add(local_vars, GATE_EVAL_OFFSET),mulmod(mload(add(local_vars, GATE_EVAL_OFFSET)),get_selector_i(11,local_vars),modulus))
 			gates_evaluation := addmod(gates_evaluation,mload(add(local_vars, GATE_EVAL_OFFSET)),modulus)
 
-			//Gate6
+			//Gate8
 			mstore(add(local_vars, GATE_EVAL_OFFSET), 0)
 			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET), 0)
 			terms:=get_witness_i_by_rotation_idx(4,2, local_vars)
@@ -392,10 +392,10 @@ library Gate4{
 			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET),addmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),terms,modulus))
 			mstore(add(local_vars, GATE_EVAL_OFFSET),addmod(mload(add(local_vars, GATE_EVAL_OFFSET)),mulmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),theta_acc,modulus),modulus))
 			theta_acc := mulmod(theta_acc, theta, modulus)
-			mstore(add(local_vars, GATE_EVAL_OFFSET),mulmod(mload(add(local_vars, GATE_EVAL_OFFSET)),get_selector_i(6,local_vars),modulus))
+			mstore(add(local_vars, GATE_EVAL_OFFSET),mulmod(mload(add(local_vars, GATE_EVAL_OFFSET)),get_selector_i(8,local_vars),modulus))
 			gates_evaluation := addmod(gates_evaluation,mload(add(local_vars, GATE_EVAL_OFFSET)),modulus)
 
-			//Gate7
+			//Gate9
 			mstore(add(local_vars, GATE_EVAL_OFFSET), 0)
 			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET), 0)
 			terms:=get_witness_i_by_rotation_idx(2,2, local_vars)
@@ -818,10 +818,10 @@ library Gate4{
 			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET),addmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),terms,modulus))
 			mstore(add(local_vars, GATE_EVAL_OFFSET),addmod(mload(add(local_vars, GATE_EVAL_OFFSET)),mulmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),theta_acc,modulus),modulus))
 			theta_acc := mulmod(theta_acc, theta, modulus)
-			mstore(add(local_vars, GATE_EVAL_OFFSET),mulmod(mload(add(local_vars, GATE_EVAL_OFFSET)),get_selector_i(7,local_vars),modulus))
+			mstore(add(local_vars, GATE_EVAL_OFFSET),mulmod(mload(add(local_vars, GATE_EVAL_OFFSET)),get_selector_i(9,local_vars),modulus))
 			gates_evaluation := addmod(gates_evaluation,mload(add(local_vars, GATE_EVAL_OFFSET)),modulus)
 
-			//Gate8
+			//Gate10
 			mstore(add(local_vars, GATE_EVAL_OFFSET), 0)
 			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET), 0)
 			terms:=get_witness_i_by_rotation_idx(0,1, local_vars)
@@ -846,10 +846,10 @@ library Gate4{
 			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET),addmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),terms,modulus))
 			mstore(add(local_vars, GATE_EVAL_OFFSET),addmod(mload(add(local_vars, GATE_EVAL_OFFSET)),mulmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),theta_acc,modulus),modulus))
 			theta_acc := mulmod(theta_acc, theta, modulus)
-			mstore(add(local_vars, GATE_EVAL_OFFSET),mulmod(mload(add(local_vars, GATE_EVAL_OFFSET)),get_selector_i(8,local_vars),modulus))
+			mstore(add(local_vars, GATE_EVAL_OFFSET),mulmod(mload(add(local_vars, GATE_EVAL_OFFSET)),get_selector_i(10,local_vars),modulus))
 			gates_evaluation := addmod(gates_evaluation,mload(add(local_vars, GATE_EVAL_OFFSET)),modulus)
 
-			//Gate9
+			//Gate11
 			mstore(add(local_vars, GATE_EVAL_OFFSET), 0)
 			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET), 0)
 			terms:=get_witness_i_by_rotation_idx(0,2, local_vars)
@@ -949,10 +949,10 @@ library Gate4{
 			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET),addmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),terms,modulus))
 			mstore(add(local_vars, GATE_EVAL_OFFSET),addmod(mload(add(local_vars, GATE_EVAL_OFFSET)),mulmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),theta_acc,modulus),modulus))
 			theta_acc := mulmod(theta_acc, theta, modulus)
-			mstore(add(local_vars, GATE_EVAL_OFFSET),mulmod(mload(add(local_vars, GATE_EVAL_OFFSET)),get_selector_i(5,local_vars),modulus))
+			mstore(add(local_vars, GATE_EVAL_OFFSET),mulmod(mload(add(local_vars, GATE_EVAL_OFFSET)),get_selector_i(7,local_vars),modulus))
 			gates_evaluation := addmod(gates_evaluation,mload(add(local_vars, GATE_EVAL_OFFSET)),modulus)
 
-			//Gate10
+			//Gate12
 			mstore(add(local_vars, GATE_EVAL_OFFSET), 0)
 			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET), 0)
 			terms:=get_witness_i_by_rotation_idx(0,2, local_vars)
@@ -1010,10 +1010,10 @@ library Gate4{
 			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET),addmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),terms,modulus))
 			mstore(add(local_vars, GATE_EVAL_OFFSET),addmod(mload(add(local_vars, GATE_EVAL_OFFSET)),mulmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),theta_acc,modulus),modulus))
 			theta_acc := mulmod(theta_acc, theta, modulus)
-			mstore(add(local_vars, GATE_EVAL_OFFSET),mulmod(mload(add(local_vars, GATE_EVAL_OFFSET)),get_selector_i(10,local_vars),modulus))
+			mstore(add(local_vars, GATE_EVAL_OFFSET),mulmod(mload(add(local_vars, GATE_EVAL_OFFSET)),get_selector_i(12,local_vars),modulus))
 			gates_evaluation := addmod(gates_evaluation,mload(add(local_vars, GATE_EVAL_OFFSET)),modulus)
 
-			//Gate11
+			//Gate13
 			mstore(add(local_vars, GATE_EVAL_OFFSET), 0)
 			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET), 0)
 			terms:=get_witness_i_by_rotation_idx(1,2, local_vars)
@@ -1049,7 +1049,7 @@ library Gate4{
 			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET),addmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),terms,modulus))
 			mstore(add(local_vars, GATE_EVAL_OFFSET),addmod(mload(add(local_vars, GATE_EVAL_OFFSET)),mulmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),theta_acc,modulus),modulus))
 			theta_acc := mulmod(theta_acc, theta, modulus)
-			mstore(add(local_vars, GATE_EVAL_OFFSET),mulmod(mload(add(local_vars, GATE_EVAL_OFFSET)),get_selector_i(11,local_vars),modulus))
+			mstore(add(local_vars, GATE_EVAL_OFFSET),mulmod(mload(add(local_vars, GATE_EVAL_OFFSET)),get_selector_i(13,local_vars),modulus))
 			gates_evaluation := addmod(gates_evaluation,mload(add(local_vars, GATE_EVAL_OFFSET)),modulus)
 
 

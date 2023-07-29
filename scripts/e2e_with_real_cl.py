@@ -8,7 +8,7 @@ from brownie.network import accounts
 from brownie import (
     ZKTVLOracleContract, LidoLocatorMock, LidoStakingRouterMock, ZKLLVMVerifierMock,
     BeaconBlockHashKeeper, Wei,
-    GateArgument, Gate0, Gate4, CircuitParams
+    GateArgument, Gate0, Gate6, CircuitParams
 )
 from brownie import (ProofVerifier, PlaceholderVerifier)
 from brownie.network import gas_price
@@ -116,7 +116,7 @@ class Contracts(ContractsBase):
         # Real verifier
         verifier_lib = ProofVerifier.deploy(deploy_tx_info)  # used by PlaceholderVerifier
         gate0 = Gate0.deploy(deploy_tx_info)
-        gate4 = Gate4.deploy(deploy_tx_info)
+        gate4 = Gate6.deploy(deploy_tx_info)
         circuit_params = CircuitParams.deploy(deploy_tx_info)
         gate = GateArgument.deploy(deploy_tx_info)
         verifier = PlaceholderVerifier.deploy(deploy_tx_info)
@@ -221,10 +221,8 @@ def _run_with_server(server):
     with with_timing(printer, "Reading Beacon chain pointers"):
         finalized_slot = cc.get_block_header('finalized')
         # Public API serving debug endpoint sometimes lag one epoch behind
-        # target_finalized_slot_number = (finalized_slot.epoch - 1) * 32
-        # TODO: query from AccountingModule HashConsensus getCurrentFrame
-        # 0xD624B08C83bAECF0807Dd2c6880C3154a5F0B288
-        ref_slot = 6962399 + 1
+        target_finalized_slot_number = (finalized_slot.epoch - 1) * 32
+        ref_slot = target_finalized_slot_number
         target_slot = cc.get_block_header(ref_slot)
         justified_slot = cc.get_block_header('justified')
         head_slot = cc.get_block_header('head')
