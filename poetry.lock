@@ -798,10 +798,25 @@ files = [
 ]
 
 [[package]]
+name = "typed-argparse"
+version = "0.2.11"
+description = "Write type-safe and elegant CLIs with a clear separation of concerns."
+category = "main"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "typed-argparse-0.2.11.tar.gz", hash = "sha256:5807712ff9e4730793faf41e6347609e71056f290d6a7b6509dc5dee7df05366"},
+    {file = "typed_argparse-0.2.11-py3-none-any.whl", hash = "sha256:235257f9c2d1b78e117cf889d8ea3df2146270278ed85182cd903f4337996dcd"},
+]
+
+[package.dependencies]
+typing-extensions = "*"
+
+[[package]]
 name = "typing-extensions"
 version = "4.6.3"
 description = "Backported and Experimental Type Hints for Python 3.7+"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
@@ -915,4 +930,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.11"
-content-hash = "a73526e4887403113fffa441707b0a5e7b202cc3b4e6065c1d250aba0f4a40e5"
+content-hash = "826d81c8e4fa141768882f5334ef4ad9e05e33f516004d7c73829afd2fee1da4"

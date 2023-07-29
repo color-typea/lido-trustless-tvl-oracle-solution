@@ -67,7 +67,7 @@ class OracleReport:
                f"lidoWithdrawalCredentials={self.lidoWithdrawalCredentials.hex()[:5]}...{self.lidoWithdrawalCredentials.hex()[-6:]}, " \
                f"activeValidators={self.activeValidators}, " \
                f"exitedValidators={self.exitedValidators}, " \
-               f"totalValueLocked={self.totalValueLocked / 10**9}Gwei)"
+               f"totalValueLocked={self.totalValueLocked} Gwei)"
 
 
 @dataclass
