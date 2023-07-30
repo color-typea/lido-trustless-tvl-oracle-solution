@@ -47,6 +47,13 @@ class ConsensusClient:
             parent_hash = HexBytes(message["parent_root"])
         )
 
+class PreloadedBeaconStateLoader:
+    def __init__(self, bs_path):
+        self.bs_path = bs_path
+    def load_beacon_state(self, _state_id) -> bytes:
+        with open(self.bs_path, "rb") as bs_file:
+            return bs_file.read()
+
 class BeaconStateLoader:
     ENDPOINT = "eth/v2/debug/beacon/states/{state_id}"
     def __init__(self, beacon_api_url):

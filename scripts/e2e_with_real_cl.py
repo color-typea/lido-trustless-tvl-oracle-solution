@@ -17,7 +17,10 @@ from brownie.convert import to_bytes, to_address, to_bool, to_int
 from eth_typing import HexStr
 
 from scripts.components.eth_ssz_utils import Constants, make_beacon_block_state, make_validator
-from scripts.components.concensus_client import BeaconStateLoader, BeaconBlockHashRecord, ConsensusClient
+from scripts.components.concensus_client import (
+    BeaconStateLoader, BeaconBlockHashRecord, ConsensusClient,
+    PreloadedBeaconStateLoader
+)
 from scripts.components.oracle import OracleReport, OracleProof, WithdrawalCredentials
 from scripts.components.utils import Printer, with_timing
 from scripts.components.oracle_invoker import OracleInvoker, OracleInvokerEnv
@@ -214,15 +217,17 @@ def _run_with_server(server):
     # printer.info(f"TVL Oracle contract address {container.contracts.tvl_contract.address}")
     # printer.wait("Press enter to continue")
     cc = ConsensusClient(os.getenv('CONSENSUS_CLIENT_URI'))
-    bsc = BeaconStateLoader(os.getenv('BEACON_STATE_CLIENT_URI'))
+    bsc = PreloadedBeaconStateLoader("/home/john/Projects/crypto/lido/playground-node/ssz/6983968.ssz")
+    # bsc = BeaconStateLoader(os.getenv('BEACON_STATE_CLIENT_URI'))
 
     printer.header("Reading Beacon chain slot pointers (latest, finalized and justified)")
     printer.detail("This operation is part of the script setup, and will not happen in actual oracle operations")
     with with_timing(printer, "Reading Beacon chain pointers"):
         finalized_slot = cc.get_block_header('finalized')
         # Public API serving debug endpoint sometimes lag one epoch behind
-        target_finalized_slot_number = (finalized_slot.epoch - 1) * 32
-        ref_slot = target_finalized_slot_number
+        # target_finalized_slot_number = (finalized_slot.epoch - 1) * 32
+        # ref_slot = 6983999 + 1
+        ref_slot = 6983968
         target_slot = cc.get_block_header(ref_slot)
         justified_slot = cc.get_block_header('justified')
         head_slot = cc.get_block_header('head')
@@ -237,14 +242,6 @@ def _run_with_server(server):
     printer.detail("This operation is part of the script setup, and will not happen in actual oracle operations")
     with with_timing(printer, "Parsing Beacon state SSZ"):
         finalized_beacon_state = BeaconState.from_ssz(finalized_beacon_state_bytes)
-        # initial_validators = (
-        #         [make_validator(WithdrawalCredentials.LIDO, 0, 1, None) for _ in range(5)] +
-        #         [make_validator(WithdrawalCredentials.OTHER, 0, 1, None) for _ in range(5)]
-        # )
-        # initial_balances = [10 * (10 ** 9) for _ in range(5)] + [1000 * (10 ** 9) for _ in range(5)]
-        # finalized_beacon_state = make_beacon_block_state(
-        #     target_finalized.slot, target_finalized.epoch, Constants.Genesis.BLOCK_ROOT, initial_validators, initial_balances
-        # )
 
     container.server.add_state(
         target_slot.slot, target_slot.block_hash, target_slot.parent_hash, finalized_beacon_state
@@ -286,7 +283,7 @@ def assert_report_dont_match(actual_report, unexpected_report):
 
 def step1_success(block_meta, bs1: BeaconState, expected_report: OracleReport):
     # printer.wait(f"Ready to run oracle - press enter to start...")
-    printer.info(f"Running oracle - this should take a few seconds")
+    printer.info(f"Running oracle - this should take a some time")
     with with_timing(printer, "Run oracle"):
         container.oracle_invoker.run()
     printer.success(f"Oracle run successful, report accepted, proof verifies")
