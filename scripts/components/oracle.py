@@ -48,7 +48,7 @@ class OracleReport:
 
             if validator.exit_epoch <= block_data.epoch:
                 exited += 1
-            elif validator.activation_eligibility_epoch <= block_data.epoch:
+            if validator.activation_eligibility_epoch <= block_data.epoch:
                 active += 1
             validator_balance = beacon_state.balances[idx]
             balance += validator_balance
