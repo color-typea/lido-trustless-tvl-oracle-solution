@@ -217,7 +217,7 @@ def _run_with_server(server):
     # printer.info(f"TVL Oracle contract address {container.contracts.tvl_contract.address}")
     # printer.wait("Press enter to continue")
     cc = ConsensusClient(os.getenv('CONSENSUS_CLIENT_URI'))
-    bsc = PreloadedBeaconStateLoader("/home/john/Projects/crypto/lido/playground-node/ssz/6983968.ssz")
+    bsc = PreloadedBeaconStateLoader("~/Projects/crypto/lido/playground-node/ssz/6984000.ssz")
     # bsc = BeaconStateLoader(os.getenv('BEACON_STATE_CLIENT_URI'))
 
     printer.header("Reading Beacon chain slot pointers (latest, finalized and justified)")
@@ -227,7 +227,7 @@ def _run_with_server(server):
         # Public API serving debug endpoint sometimes lag one epoch behind
         # target_finalized_slot_number = (finalized_slot.epoch - 1) * 32
         # ref_slot = 6983999 + 1
-        ref_slot = 6983968
+        ref_slot = 6984000
         target_slot = cc.get_block_header(ref_slot)
         justified_slot = cc.get_block_header('justified')
         head_slot = cc.get_block_header('head')
