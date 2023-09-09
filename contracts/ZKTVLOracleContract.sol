@@ -86,6 +86,10 @@ contract ZKTVLOracleContract {
         emit ReportAccepted(report);
     }
 
+    function getContractVersion() public view returns (uint256) {
+        return contractVersion;
+    }
+
     // Compatible with Versioned.sol, intended to be later replaced by complete versioning solution
     function _checkContractVersion(uint256 version) internal view {
         if (version != contractVersion) {

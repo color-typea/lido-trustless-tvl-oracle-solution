@@ -1,4 +1,3 @@
-
 import os
 
 from brownie.exceptions import VirtualMachineError
@@ -121,12 +120,12 @@ class RealContracts(ContractsBase):
     gate: GateArgument
 
     def __init__(
-        self, verifier: PlaceholderVerifier, gate: GateArgument, locator, staiking_router, hash_keeper,
+        self, verifier: PlaceholderVerifier, gate: GateArgument, locator, staking_router, hash_keeper,
         tvl_contract
     ):
         self._verifier = verifier
         self.verification_gate = gate
-        super().__init__(locator, staiking_router, hash_keeper, tvl_contract)
+        super().__init__(locator, staking_router, hash_keeper, tvl_contract)
 
     @property
     def verifier(self):
