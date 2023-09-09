@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity >=0.8.4;
+pragma solidity >=0.8 <0.9;
 
 import "../interfaces/IVerifier.sol";
 import "../interfaces/ILidoStakingRouter.sol";

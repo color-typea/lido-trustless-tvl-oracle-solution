@@ -7,7 +7,6 @@ pragma solidity >=0.8.4;
 {%- set columns_rotations_len = columns_rotations|length %}
 
 library CircuitParams {
-    // TODO: codegen from circuit_params.json
     uint256 constant modulus = {{modulus}};
     uint256 constant r = {{r}};
     uint256 constant max_degree = {{max_degree}};
