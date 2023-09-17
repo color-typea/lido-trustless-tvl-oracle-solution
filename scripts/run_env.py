@@ -57,4 +57,9 @@ def main():
     contracts = deploy_contracts(owner, WithdrawalCredentials.LIDO)
     printer.header("ZKTVLContract address")
     printer.info(contracts.tvl_contract.address)
+
+    version = contracts.tvl_contract.getContractVersion()
+    printer.info(f"Contract version {version}")
     printer.wait("Running env - press any key to stop")
+
+

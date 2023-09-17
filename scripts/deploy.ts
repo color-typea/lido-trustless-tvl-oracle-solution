@@ -35,9 +35,11 @@ async function main() {
     [Verifier.getAddress(), GateArgument.getAddress(), lidoContracts.locator, HashKeeper.getAddress()]
   );
 
-  await ZKTLVOracleContract.waitForDeployment()
+  await ZKTLVOracleContract.waitForDeployment();
 
-  console.log(`ZKTLVOracleContract with deployed to ${ZKTLVOracleContract.target}`);
+  const version = await ZKTLVOracleContract.getContractVersion();
+
+  console.log(`ZKTLVOracleContract (version: ${version}) with deployed to ${ZKTLVOracleContract.target}`);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

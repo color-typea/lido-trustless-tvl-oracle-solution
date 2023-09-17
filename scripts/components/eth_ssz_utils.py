@@ -43,14 +43,15 @@ class Generators:
 
 def make_validator(
         withdrawal_credentials: bytes, activation_eligibility_epoch: int, activation_epoch: int,
-        exit_epoch: Optional[int] = None
+        exit_epoch: Optional[int] = None, pubkey = None
 ) -> Validator:
+    pubkey = secrets.token_bytes(48) if pubkey is None else pubkey
     assert len(withdrawal_credentials) == 32
     assert activation_eligibility_epoch < activation_epoch
     if exit_epoch is not None:
         assert exit_epoch >= activation_epoch
     return Validator.create(
-        pubkey = secrets.token_bytes(48),
+        pubkey = pubkey,
         withdrawal_credentials =  withdrawal_credentials,
         effective_balance =  32 * 10**9,
         slashed =  False,
