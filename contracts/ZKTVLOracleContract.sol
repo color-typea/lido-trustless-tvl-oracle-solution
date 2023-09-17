@@ -19,6 +19,9 @@ contract ZKTVLOracleContract {
     }
 
     struct OracleProof {
+        bytes32 balancesHash;
+        bytes32 validatorsHash;
+        bytes32 beaconStateHash;
         bytes32 beaconBlockHash;
         bytes zkProof;
     }
@@ -69,7 +72,7 @@ contract ZKTVLOracleContract {
         _require(
             proof.beaconBlockHash == expectedBeaconBlockHash,
             report,
-            "Reported balances hash didn't match actual one"
+            "Reported beacon block hash didn't match actual one"
         );
         _require(
             report.lidoWithdrawalCredentials == expectedWithdrawalAddress,
