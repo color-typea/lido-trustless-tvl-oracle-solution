@@ -18,6 +18,7 @@ from ssz.sedes import (
     uint64,
     uint256
 )
+from ssz.hash import hash_eth2
 from typing.io import BinaryIO
 
 from scripts.components import constants
@@ -226,6 +227,47 @@ class BeaconState(EnhancedHashableContainer):
     @classmethod
     def from_ssz(cls, ssz_bytes: bytes) -> 'BeaconState':
         return ssz.decode(ssz_bytes, cls)
+
+    @property
+    def raw_hash_tree_for_inclusion(self):
+        # Last layer only has one value that is the hash tree root
+        return self.hash_tree.raw_hash_tree[:-1]
+
+    def construct_inclusion_proof(self, field_name, field_hash):
+        field_index = self._meta.field_names.index(field_name)
+
+        raw_hash_tree = self.raw_hash_tree_for_inclusion
+        result = []
+
+        assert(field_hash == raw_hash_tree[0][field_index])
+        for layer in raw_hash_tree:
+            sibling_idx = field_index - 1 if field_index % 2 == 1 else field_index + 1
+            result.append(layer[sibling_idx])
+            field_index //= 2
+        return result
+
+    def verify_inclusion_proof(self, field_name, field_hash, inclusion_proof):
+        field_index = self._meta.field_names.index(field_name)
+
+        raw_hash_tree = self.raw_hash_tree_for_inclusion
+        if len(inclusion_proof) != len(raw_hash_tree):
+            return False
+
+        current_hash = field_hash
+        for idx in range(len(inclusion_proof)):
+            inclusion_step, layer = inclusion_proof[idx], raw_hash_tree[idx]
+            assert current_hash == layer[field_index], \
+                (f"Verification failed at layer {idx}, field_index {field_index}.\n"
+                 f"Expected{layer[field_index]}, got {current_hash}")
+            if field_index % 2 == 1:
+                current_hash = hash_eth2(layer[field_index - 1] + current_hash)
+            else:
+                current_hash = hash_eth2(current_hash + layer[field_index + 1])
+
+            field_index //= 2
+
+        return current_hash == self.hash_tree_root
+
 
 
 class BeaconStateModifier:

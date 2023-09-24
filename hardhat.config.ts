@@ -1,6 +1,8 @@
+import "@nomicfoundation/hardhat-toolbox";
+import "@nomiclabs/hardhat-ethers";
+import "hardhat-deploy";
 import { HardhatUserConfig, extendEnvironment } from "hardhat/config";
 import { config as dotEnvConfig } from "dotenv";
-import "@nomicfoundation/hardhat-toolbox";
 import { NetworksUserConfig } from "hardhat/types/config";
 
 const dotenvConf =  dotEnvConfig();
@@ -20,7 +22,11 @@ const networks: NetworksUserConfig = {
       // url: 'https://goerli.infura.io/v3/' + process.env.WEB3_INFURA_PROJECT_ID,
       url: 'https://rpc.ankr.com/eth_goerli/' + process.env.ANKR_API_ID,
     },
-  }
+  },
+  goerli: {
+    url: `https://rpc.ankr.com/eth_goerli/${process.env.GOERLI_ANKR_API_ID}`,
+    accounts: [process.env.GOERLI_PRIVATE_KEY]
+  },
 }
 
 
@@ -35,6 +41,9 @@ const config: HardhatUserConfig = {
         runs: 50,
       },
     },
+  },
+  namedAccounts: {
+    deployer: 0,
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_TOKEN
@@ -57,6 +66,16 @@ type LidoContracts = {
   stakingRouter: string
 }
 
+
+type NilContracts = {
+  verifier: string
+}
+
+type ExternalContracts = {
+  lido: LidoContracts,
+  nil: NilContracts
+}
+
 function getLidoContracts(networkName: string): LidoContracts {
   switch (networkName) {
     case 'mainnet': 
@@ -72,8 +91,29 @@ function getLidoContracts(networkName: string): LidoContracts {
   }
 }
 
+
+
+function getExternalContracts(networkName: string): ExternalContracts {
+  let nilContracts: NilContracts;
+  switch (networkName) {
+    case 'goerli':
+      nilContracts = { verifier: "0xC1bcE2291bd826d51a1e7f2FeB518d421D239cce" };
+      break;
+    case 'localhost':
+      // this will 
+      nilContracts = { verifier: "0x6646cf04c97d4159ba2B3a199a69b8a5C6aBFC7a" };
+      break;
+    default:
+      throw new Error(`Verifier is not yet deployed on network ${networkName}`);
+  }
+  return {
+    lido: getLidoContracts(NETWORK_NAME),
+    nil: nilContracts,
+  }
+}
+
 extendEnvironment((hre) => {
-  hre.lidoContracts = getLidoContracts(NETWORK_NAME);
+  hre.externalContracts = getExternalContracts(NETWORK_NAME);
 });
 
 export default config;

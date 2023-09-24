@@ -8,7 +8,11 @@
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^3.0.0",
-    "hardhat": "^2.17.2"
+    "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers@^0.4.1",
+    "ethers": "^6.7.1",
+    "hardhat": "^2.17.2",
+    "hardhat-deploy": "^0.11.37",
+    "lossless-json": "^2.0.11"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

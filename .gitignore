@@ -150,3 +150,17 @@ typechain-types
 cache
 artifacts
 
+/deployments/goerli/solcInputs/5cfe6910f784bc8ad293e5af4a061a20.json
+/deployments/goerli/solcInputs/e73bc04ae9d9b3a63f9fbafdbffc2b39.json
+/deployments/goerli/.chainId
+/deployments/goerli/BeaconBlockHashKeeper.json
+/deployments/goerli/CircuitParams.json
+/deployments/goerli/gates_gate_argument_split_gen.json
+/deployments/goerli/ZKTVLOracleContract.json
+/deployments/localhost/solcInputs/5cfe6910f784bc8ad293e5af4a061a20.json
+/deployments/localhost/solcInputs/e73bc04ae9d9b3a63f9fbafdbffc2b39.json
+/deployments/localhost/.chainId
+/deployments/localhost/BeaconBlockHashKeeper.json
+/deployments/localhost/CircuitParams.json
+/deployments/localhost/gates_gate_argument_split_gen.json
+/deployments/localhost/ZKTVLOracleContract.json
