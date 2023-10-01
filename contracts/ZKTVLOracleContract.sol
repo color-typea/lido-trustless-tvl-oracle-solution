@@ -13,9 +13,9 @@ contract ZKTVLOracleContract {
         uint256 slot;
         uint256 epoch;
         bytes32 lidoWithdrawalCredentials;
-        uint256 activeValidators;
-        uint256 exitedValidators;
-        uint256 totalValueLocked;
+        uint256 allLidoValidators;
+        uint256 exitedLidoValidators;
+        uint256 clBalance;
     }
 
     struct OracleProof {
@@ -114,12 +114,24 @@ contract ZKTVLOracleContract {
         // sanity checks for the report: e.g. number of validators does not change more than X% since last report
     }
 
-    function verifyZKLLVMProof(
-        address gate, OracleReport memory report, OracleProof memory proof
-    ) internal view returns (bool) {
+    function constructPublicInput(OracleReport memory report, OracleProof memory proof) internal pure returns(uint256[] memory) {
+        uint256[] memory public_input = new uint256[](6);
+        public_input[0] = uint256(report.lidoWithdrawalCredentials);
+        public_input[1] = uint256(report.slot);
+        public_input[2] = uint256(report.epoch);
+        public_input[3] = uint256(report.clBalance);
+        public_input[4] = uint256(report.allLidoValidators);
+        public_input[5] = uint256(report.exitedLidoValidators);
+        public_input[6] = uint256(proof.beaconStateHash);
+        public_input[7] = uint256(proof.beaconBlockHash);
+        return (public_input);
+    }
+
+    function verifyZKLLVMProof(OracleReport memory report, OracleProof memory proof) internal view returns (bool) {
         uint256[] memory init_params = CircuitParams.get_init_params();
         int256[][] memory columns_rotations = CircuitParams.get_column_rotations();
-        return zkllvmVerifier.verify(proof.zkProof, init_params, columns_rotations, gate);
+        uint256[] memory public_input = constructPublicInput(report, proof);
+        return zkllvmVerifier.verify(proof.zkProof, init_params, columns_rotations, public_input, verificationGate);
     }
 
     function getLastReport() public view returns (OracleReport memory result) {
