@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.8 <0.9;
 
-import "../interfaces/IVerifier.sol";
+import "@nilfoundation/evm-placeholder-verification/contracts/interfaces/verifier.sol";
 import "../interfaces/ILidoStakingRouter.sol";
 import "../interfaces/ILidoLocator.sol";
 import "../interfaces/IBeaconBlockHashProvider.sol";
@@ -80,7 +80,7 @@ contract ZKTVLOracleContract {
             "Reported withdrawal credentials did not match actual ones"
         );
         _require(
-            verifyZKLLVMProof(verificationGate, report, proof),
+            verifyZKLLVMProof(report, proof),
             report,
             "ZK proof did not verify"
         );

@@ -103,6 +103,9 @@ function getExternalContracts(networkName: string): ExternalContracts {
       // this will 
       nilContracts = { verifier: "0x6646cf04c97d4159ba2B3a199a69b8a5C6aBFC7a" };
       break;
+    case 'hardhat':
+      nilContracts = { verifier: "0xC1bcE2291bd826d51a1e7f2FeB518d421D239cce" };
+      break;
     default:
       throw new Error(`Verifier is not yet deployed on network ${networkName}`);
   }

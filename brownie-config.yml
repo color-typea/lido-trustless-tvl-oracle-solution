@@ -1,1 +1,3 @@
 dotenv: .env
+dependencies:
+  - nilfoundation/evm-placeholder-verification@1.1.1
