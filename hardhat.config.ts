@@ -5,7 +5,7 @@ import { HardhatUserConfig, extendEnvironment } from "hardhat/config";
 import { config as dotEnvConfig } from "dotenv";
 import { NetworksUserConfig } from "hardhat/types/config";
 
-const dotenvConf =  dotEnvConfig();
+const dotenvConf = dotEnvConfig();
 
 if (dotenvConf.error) {
   console.error('Error loading .env file:', dotenvConf.error);
@@ -20,7 +20,7 @@ const networks: NetworksUserConfig = {
     chainId: 5,
     forking: {
       // url: 'https://goerli.infura.io/v3/' + process.env.WEB3_INFURA_PROJECT_ID,
-      url: 'https://rpc.ankr.com/eth_goerli/' + process.env.ANKR_API_ID,
+      url: `https://rpc.ankr.com/eth_goerli/${process.env.GOERLI_ANKR_API_ID}`
     },
   },
   goerli: {
