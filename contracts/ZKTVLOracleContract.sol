@@ -19,10 +19,9 @@ contract ZKTVLOracleContract {
     }
 
     struct OracleProof {
-        bytes32 balancesHash;
-        bytes32 validatorsHash;
-        bytes32 beaconStateHash;
-        bytes32 beaconBlockHash;
+        int256 a;
+        int256 b;
+        int256 sum;
         bytes zkProof;
     }
 
@@ -60,25 +59,25 @@ contract ZKTVLOracleContract {
         OracleProof calldata proof,
         uint version
     ) public {
-        _checkContractVersion(version);
-        _require(report.slot > latestReport.slot, report, "Report for a later slot already received");
+        // _checkContractVersion(version);
+        // _require(report.slot > latestReport.slot, report, "Report for a later slot already received");
 
-        _verifyReportSanity(report);
+        // _verifyReportSanity(report);
 
-        bytes32 expectedBeaconBlockHash = getBeaconBlockHash(report.slot);
-        bytes32 expectedWithdrawalAddress = getExpectedWithdrawalCredentials();
+        // bytes32 expectedBeaconBlockHash = getBeaconBlockHash(report.slot);
+        // bytes32 expectedWithdrawalAddress = getExpectedWithdrawalCredentials();
 
         // Temporarily, balances hash is used instead of beacon block hash
-        _require(
-            proof.beaconBlockHash == expectedBeaconBlockHash,
-            report,
-            "Reported beacon block hash didn't match actual one"
-        );
-        _require(
-            report.lidoWithdrawalCredentials == expectedWithdrawalAddress,
-            report,
-            "Reported withdrawal credentials did not match actual ones"
-        );
+        // _require(
+        //     proof.beaconBlockHash == expectedBeaconBlockHash,
+        //     report,
+        //     "Reported beacon block hash didn't match actual one"
+        // );
+        // _require(
+        //     report.lidoWithdrawalCredentials == expectedWithdrawalAddress,
+        //     report,
+        //     "Reported withdrawal credentials did not match actual ones"
+        // );
         _require(
             verifyZKLLVMProof(report, proof),
             report,
@@ -116,14 +115,9 @@ contract ZKTVLOracleContract {
 
     function constructPublicInput(OracleReport memory report, OracleProof memory proof) internal pure returns(uint256[] memory) {
         uint256[] memory public_input = new uint256[](6);
-        public_input[0] = uint256(report.lidoWithdrawalCredentials);
-        public_input[1] = uint256(report.slot);
-        public_input[2] = uint256(report.epoch);
-        public_input[3] = uint256(report.clBalance);
-        public_input[4] = uint256(report.allLidoValidators);
-        public_input[5] = uint256(report.exitedLidoValidators);
-        public_input[6] = uint256(proof.beaconStateHash);
-        public_input[7] = uint256(proof.beaconBlockHash);
+        public_input[0] = uint256(proof.a);
+        public_input[1] = uint256(proof.b);
+        public_input[2] = uint256(proof.sum);
         return (public_input);
     }
 

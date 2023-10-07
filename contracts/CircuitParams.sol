@@ -3,38 +3,24 @@ pragma solidity >=0.8.4;
 
 library CircuitParams {
     uint256 constant modulus = 28948022309329048855892746252171976963363056481941560715954676764349967630337;
-    uint256 constant r = 9;
-    uint256 constant max_degree = 1023;
+    uint256 constant r = 2;
+    uint256 constant max_degree = 7;
     uint256 constant lambda = 2;
 
-    uint256 constant rows_amount = 1024;
-    uint256 constant omega = 21138537593338818067112636105753818200833244613779330379839660864802343411573;
+    uint256 constant rows_amount = 8;
+    uint256 constant omega = 199455130043951077247265858823823987229570523056509026484192158816218200659;
 
     function get_D_omegas()
-    internal pure returns (uint256[9] memory) {
-        uint256[9] memory D_omegas = [
-            uint256(21138537593338818067112636105753818200833244613779330379839660864802343411573), 
-            uint256(22954361264956099995527581168615143754787441159030650146191365293282410739685), 
-            uint256(23692685744005816481424929253249866475360293751445976741406164118468705843520), 
-            uint256(7356716530956153652314774863381845254278968224778478050456563329565810467774), 
-            uint256(17166126583027276163107155648953851600645935739886150467584901586847365754678), 
-            uint256(3612152772817685532768635636100598085437510685224817206515049967552954106764), 
-            uint256(14450201850503471296781915119640920297985789873634237091629829669980153907901), 
+    internal pure returns (uint256[2] memory) {
+        uint256[2] memory D_omegas = [
             uint256(199455130043951077247265858823823987229570523056509026484192158816218200659), 
             uint256(24760239192664116622385963963284001971067308018068707868888628426778644166363)
         ];
         return (D_omegas);
     }
     function get_step_list()
-    internal pure returns (uint256[9] memory) {
-        uint256[9] memory step_list = [
-            uint256(1), 
-            uint256(1), 
-            uint256(1), 
-            uint256(1), 
-            uint256(1), 
-            uint256(1), 
-            uint256(1), 
+    internal pure returns (uint256[2] memory) {
+        uint256[2] memory step_list = [
             uint256(1), 
             uint256(1)
         ];
@@ -45,17 +31,17 @@ library CircuitParams {
     internal pure returns (uint256[4] memory) {
         uint256[4] memory arithmetization_params = [
             uint256(15), 
+            uint256(1), 
             uint256(5), 
-            uint256(5), 
-            uint256(30)
+            uint256(15)
         ];
         return (arithmetization_params);
     }
 
     function get_init_params()
     internal pure returns (uint256[] memory init_params) {
-        uint256[9] memory d_omegas = get_D_omegas();
-        uint256[9] memory step_list = get_step_list();
+        uint256[2] memory d_omegas = get_D_omegas();
+        uint256[2] memory step_list = get_step_list();
         uint256[4] memory arithmetization_params = get_arithmetization_params();
 
         uint256[] memory init_args = new uint256[](
@@ -111,8 +97,9 @@ library CircuitParams {
 
     function get_column_rotations()
     internal pure returns (int256[][] memory) {
-        int256[][] memory column_rotations = new int256[][](55);
+        int256[][] memory column_rotations = new int256[][](56);
         uint idx = 0;
+        column_rotations[idx++] = makeDyn1(0);
         column_rotations[idx++] = makeDyn1(0);
         column_rotations[idx++] = makeDyn1(0);
         column_rotations[idx++] = makeDyn1(0);

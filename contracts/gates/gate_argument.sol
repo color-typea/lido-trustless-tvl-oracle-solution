@@ -25,7 +25,7 @@ import "@nilfoundation/evm-placeholder-verification/contracts/commitments/batche
 import "@nilfoundation/evm-placeholder-verification/contracts/interfaces/gate_argument.sol";
 
 contract gates_gate_argument_split_gen  is IGateArgument{
-    uint256 constant GATES_N = 2;
+    uint256 constant GATES_N = 1;
 
     struct local_vars_type{
         // 0x0
@@ -107,27 +107,13 @@ contract gates_gate_argument_split_gen  is IGateArgument{
 			terms:=0x40000000000000000000000000000000224698fc094cf91b992d30ed00000000
 			terms:=mulmod(terms, get_witness_i(2, local_vars), modulus)
 			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET),addmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),terms,modulus))
-			terms:=get_witness_i(0, local_vars)
-			terms:=mulmod(terms, get_witness_i(1, local_vars), modulus)
-			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET),addmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),terms,modulus))
-			mstore(add(local_vars, GATE_EVAL_OFFSET),addmod(mload(add(local_vars, GATE_EVAL_OFFSET)),mulmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),theta_acc,modulus),modulus))
-			theta_acc := mulmod(theta_acc, theta, modulus)
-			mstore(add(local_vars, GATE_EVAL_OFFSET),mulmod(mload(add(local_vars, GATE_EVAL_OFFSET)),get_selector_i(0,local_vars),modulus))
-			gates_evaluation := addmod(gates_evaluation,mload(add(local_vars, GATE_EVAL_OFFSET)),modulus)
-
-			//Gate1
-			mstore(add(local_vars, GATE_EVAL_OFFSET), 0)
-			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET), 0)
-			terms:=0x40000000000000000000000000000000224698fc094cf91b992d30ed00000000
-			terms:=mulmod(terms, get_witness_i(2, local_vars), modulus)
-			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET),addmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),terms,modulus))
 			terms:=get_witness_i(1, local_vars)
 			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET),addmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),terms,modulus))
 			terms:=get_witness_i(0, local_vars)
 			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET),addmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),terms,modulus))
 			mstore(add(local_vars, GATE_EVAL_OFFSET),addmod(mload(add(local_vars, GATE_EVAL_OFFSET)),mulmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),theta_acc,modulus),modulus))
 			theta_acc := mulmod(theta_acc, theta, modulus)
-			mstore(add(local_vars, GATE_EVAL_OFFSET),mulmod(mload(add(local_vars, GATE_EVAL_OFFSET)),get_selector_i(1,local_vars),modulus))
+			mstore(add(local_vars, GATE_EVAL_OFFSET),mulmod(mload(add(local_vars, GATE_EVAL_OFFSET)),get_selector_i(0,local_vars),modulus))
 			gates_evaluation := addmod(gates_evaluation,mload(add(local_vars, GATE_EVAL_OFFSET)),modulus)
 
 
