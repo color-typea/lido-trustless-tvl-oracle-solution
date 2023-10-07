@@ -10,7 +10,7 @@ library CircuitParams {
     uint256 constant modulus = {{modulus}};
     uint256 constant r = {{r}};
     uint256 constant max_degree = {{max_degree}};
-    uint256 constant lambda = {{lambda}};
+    uint256 constant lambda = {{lambdda}};
 
     uint256 constant rows_amount = {{rows_amount}};
     uint256 constant omega = {{omega}};
