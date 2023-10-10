@@ -146,6 +146,9 @@ coverage.json
 typechain
 typechain-types
 
+# Custom
+beacon_state_cache
+
 # Hardhat files
 cache
 artifacts

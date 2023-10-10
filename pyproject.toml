@@ -14,6 +14,10 @@ ssz = "^0.3.1"
 flask = "^2.3.2"
 typed-argparse = "^0.2.11"
 jinja2 = "^3.1.2"
+requests = "^2.31.0"
+validators = "^0.22.0"
+python-dotenv = "^1.0.0"
+psutil = "^5.9.5"
 
 [tool.poetry.group.dev.dependencies]
 pylint = "^2.0.0"
