@@ -26,22 +26,22 @@ contract ZKTVLOracleContract {
         bytes zkProof;
     }
 
-    event ReportAccepted(
-        OracleReport report
-    );
-
-
-    OracleReport latestReport;
-
     IVerifier zkllvmVerifier;
     address verificationGate;
     IBeaconBlockHashProvider beaconBlockHashProvider;
     ILidoLocator lidoLocator;
     uint public constant contractVersion = 1;
 
+    mapping(uint256 => OracleReport) reports;
+
     error UnexpectedContractVersion(uint256 expected, uint256 received);
-    // This should later become an error
-    event ReportRejected(OracleReport report, string reason);
+    error ReportRejected(OracleReport report, string reason);
+
+    event ReportAccepted(
+        uint256 slot,
+        OracleReport report
+    );
+
 
     constructor(
         address zkllvmVerifier_,
@@ -61,23 +61,20 @@ contract ZKTVLOracleContract {
         uint version
     ) public {
         _checkContractVersion(version);
-        _require(report.slot > latestReport.slot, report, "Report for a later slot already received");
-
         _verifyReportSanity(report);
 
         bytes32 expectedBeaconBlockHash = getBeaconBlockHash(report.slot);
         bytes32 expectedWithdrawalAddress = getExpectedWithdrawalCredentials();
 
-        // Temporarily, balances hash is used instead of beacon block hash
         _require(
             proof.beaconBlockHash == expectedBeaconBlockHash,
             report,
-            "Reported beacon block hash didn't match actual one"
+            "Beacon block hash didn't match actual one"
         );
         _require(
             report.lidoWithdrawalCredentials == expectedWithdrawalAddress,
             report,
-            "Reported withdrawal credentials did not match actual ones"
+            "Withdrawal credentials did not match actual ones"
         );
         _require(
             verifyZKLLVMProof(report, proof),
@@ -85,8 +82,7 @@ contract ZKTVLOracleContract {
             "ZK proof did not verify"
         );
 
-        latestReport = report;
-        emit ReportAccepted(report);
+        _updateReport(report);
     }
 
     function getContractVersion() public pure returns (uint256) {
@@ -128,26 +124,36 @@ contract ZKTVLOracleContract {
     }
 
     function verifyZKLLVMProof(OracleReport memory report, OracleProof memory proof) internal view returns (bool) {
-        uint256[] memory init_params = CircuitParams.get_init_params();
-        int256[][] memory columns_rotations = CircuitParams.get_column_rotations();
-        uint256[] memory public_input = constructPublicInput(report, proof);
-        return zkllvmVerifier.verify(proof.zkProof, init_params, columns_rotations, public_input, verificationGate);
+        return zkllvmVerifier.verify(
+            proof.zkProof, 
+            CircuitParams.get_init_params(), 
+            CircuitParams.get_column_rotations(), 
+            constructPublicInput(report, proof),
+            verificationGate
+        );
     }
 
-    function getLastReport() public view returns (OracleReport memory result) {
-        return (latestReport);
+    function getReport(uint256 slot) external view returns (
+	    bool success,
+	    uint256 clBalanceGwei,
+	    uint256 numValidators
+	) {
+        OracleReport memory report = reports[slot];
+        return (
+            report.slot > 0,
+            report.clBalance,
+            report.allLidoValidators
+        );
     }
 
     function _updateReport(OracleReport memory report) internal {
-        latestReport = report;
-        emit ReportAccepted(report);
+        reports[report.slot] = report;
+        emit ReportAccepted(report.slot, report);
     }
 
-    function _require(bool condition, OracleReport memory report, string memory reason) internal {
+    function _require(bool condition, OracleReport memory report, string memory reason) internal pure {
         if (!condition) {
-            // this is largely for documentation purposes, events in rejected transactions are discarded
-            emit ReportRejected(report, reason);
-            revert(reason);
+            revert ReportRejected(report, reason);
         }
     }
 }
