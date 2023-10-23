@@ -24,8 +24,13 @@ import "@nilfoundation/evm-placeholder-verification/contracts/basic_marshalling.
 import "@nilfoundation/evm-placeholder-verification/contracts/commitments/batched_lpc_verifier.sol";
 import "@nilfoundation/evm-placeholder-verification/contracts/interfaces/gate_argument.sol";
 
+import "./gate0.sol";
+import "./gate5.sol";
+import "./gate13.sol";
+
+
 contract gates_gate_argument_split_gen  is IGateArgument{
-    uint256 constant GATES_N = 2;
+    uint256 constant GATES_N = 18;
 
     struct local_vars_type{
         // 0x0
@@ -38,23 +43,15 @@ contract gates_gate_argument_split_gen  is IGateArgument{
         uint256 theta_acc;
 
 		//0x80
-		uint256[] witness_evaluations;
+		uint256[][] witness_evaluations;
 		//a0
+		uint256[] constant_evaluations;
+		//c0
 		uint256[] selector_evaluations;
 
     }
 
-    uint256 constant MODULUS_OFFSET = 0x0;
-    uint256 constant THETA_OFFSET = 0x20;
-
-    uint256 constant CONSTRAINT_EVAL_OFFSET = 0x00;
-    uint256 constant GATE_EVAL_OFFSET = 0x20;
-    uint256 constant GATES_EVALUATIONS_OFFSET = 0x40;
-    uint256 constant THETA_ACC_OFFSET = 0x60;
-	uint256 constant WITNESS_EVALUATIONS_OFFSET = 0x80;
-	uint256 constant SELECTOR_EVALUATIONS_OFFSET = 0xa0;
-
-
+    // TODO: columns_rotations could be hard-coded
     function evaluate_gates_be(
         bytes calldata blob,
         uint256 eval_proof_combined_value_offset,
@@ -65,11 +62,24 @@ contract gates_gate_argument_split_gen  is IGateArgument{
         local_vars_type memory local_vars;
 
 
-        local_vars.witness_evaluations = new uint256[](ar_params.witness_columns);
+        local_vars.witness_evaluations = new uint256[][](ar_params.witness_columns);
         for (uint256 i = 0; i < ar_params.witness_columns;) {
-            local_vars.witness_evaluations[i] = batched_lpc_verifier.get_variable_values_z_i_j_from_proof_be(
-                    blob, eval_proof_combined_value_offset, i, 0
+            local_vars.witness_evaluations[i] = new uint256[](columns_rotations[i].length);
+            for (uint256 j = 0; j < columns_rotations[i].length;) {
+                local_vars.witness_evaluations[i][j] = batched_lpc_verifier.get_variable_values_z_i_j_from_proof_be(
+                    blob, eval_proof_combined_value_offset, i, j
+                );
+                unchecked{j++;}
+            }
+            unchecked{i++;}
+        }
+
+        local_vars.constant_evaluations = new uint256[](ar_params.constant_columns);
+        for (uint256 i = 0; i < ar_params.constant_columns;) {
+            local_vars.constant_evaluations[i] = batched_lpc_verifier.get_fixed_values_z_i_j_from_proof_be(
+                blob, eval_proof_combined_value_offset, ar_params.permutation_columns + ar_params.permutation_columns + i, 0
             );
+ 
             unchecked{i++;}
         }
 
@@ -83,54 +93,13 @@ contract gates_gate_argument_split_gen  is IGateArgument{
 
 
         local_vars.theta_acc = 1;
-        local_vars.gates_evaluation = 0;    
+        local_vars.gates_evaluation = 0;
 
-        uint256 theta_acc = local_vars.theta_acc;
-
-        uint256 terms;
-        assembly {
-            let modulus := mload(gate_params)
-            let theta := mload(add(gate_params, THETA_OFFSET))
+		(local_vars.gates_evaluation, local_vars.theta_acc) = gates_gate0.evaluate_gate_be(gate_params, local_vars);
+		(local_vars.gates_evaluation, local_vars.theta_acc) = gates_gate5.evaluate_gate_be(gate_params, local_vars);
+		(local_vars.gates_evaluation, local_vars.theta_acc) = gates_gate13.evaluate_gate_be(gate_params, local_vars);
 
 
-            function get_witness_i(idx, ptr) -> result {
-                result := mload(add(add(mload(add(ptr, WITNESS_EVALUATIONS_OFFSET)), 0x20), mul(0x20, idx)))
-            }
-
-            function get_selector_i(idx, ptr) -> result {
-                result := mload(add(add(mload(add(ptr, SELECTOR_EVALUATIONS_OFFSET)), 0x20), mul(0x20, idx)))
-            }
-
-			//Gate0
-			mstore(add(local_vars, GATE_EVAL_OFFSET), 0)
-			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET), 0)
-			terms:=0x40000000000000000000000000000000224698fc094cf91b992d30ed00000000
-			terms:=mulmod(terms, get_witness_i(2, local_vars), modulus)
-			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET),addmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),terms,modulus))
-			terms:=get_witness_i(0, local_vars)
-			terms:=mulmod(terms, get_witness_i(1, local_vars), modulus)
-			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET),addmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),terms,modulus))
-			mstore(add(local_vars, GATE_EVAL_OFFSET),addmod(mload(add(local_vars, GATE_EVAL_OFFSET)),mulmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),theta_acc,modulus),modulus))
-			theta_acc := mulmod(theta_acc, theta, modulus)
-			mstore(add(local_vars, GATE_EVAL_OFFSET),mulmod(mload(add(local_vars, GATE_EVAL_OFFSET)),get_selector_i(0,local_vars),modulus))
-			gates_evaluation := addmod(gates_evaluation,mload(add(local_vars, GATE_EVAL_OFFSET)),modulus)
-
-			//Gate1
-			mstore(add(local_vars, GATE_EVAL_OFFSET), 0)
-			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET), 0)
-			terms:=0x40000000000000000000000000000000224698fc094cf91b992d30ed00000000
-			terms:=mulmod(terms, get_witness_i(2, local_vars), modulus)
-			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET),addmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),terms,modulus))
-			terms:=get_witness_i(1, local_vars)
-			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET),addmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),terms,modulus))
-			terms:=get_witness_i(0, local_vars)
-			mstore(add(local_vars, CONSTRAINT_EVAL_OFFSET),addmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),terms,modulus))
-			mstore(add(local_vars, GATE_EVAL_OFFSET),addmod(mload(add(local_vars, GATE_EVAL_OFFSET)),mulmod(mload(add(local_vars, CONSTRAINT_EVAL_OFFSET)),theta_acc,modulus),modulus))
-			theta_acc := mulmod(theta_acc, theta, modulus)
-			mstore(add(local_vars, GATE_EVAL_OFFSET),mulmod(mload(add(local_vars, GATE_EVAL_OFFSET)),get_selector_i(1,local_vars),modulus))
-			gates_evaluation := addmod(gates_evaluation,mload(add(local_vars, GATE_EVAL_OFFSET)),modulus)
-
-
-        }
+        gates_evaluation = local_vars.gates_evaluation;
     }
 }
