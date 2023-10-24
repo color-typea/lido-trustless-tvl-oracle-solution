@@ -16,41 +16,39 @@ library CircuitParams {
     uint256 constant omega = {{omega}};
 
     function getDOmegas()
-    internal pure returns (uint256[{{D_omegas_len}}] memory) {
-        uint256[{{D_omegas_len}}] memory DOmegas = [
+    internal pure returns (uint256[{{D_omegas_len}}] memory DOmegas) {
+        DOmegas = [
 {%- for d_omega in D_omegas %}
             uint256({{d_omega}}){% if not loop.last %}, {% endif %}
 {%- endfor %}
         ];
-        return (DOmegas);
     }
+
     function getStepList()
-    internal pure returns (uint256[{{step_list_len}}] memory) {
-        uint256[{{step_list_len}}] memory stepList = [
+    internal pure returns (uint256[{{step_list_len}}] memory stepList) {
+        stepList = [
 {%- for step in step_list %}
             uint256({{step}}){% if not loop.last %}, {% endif %}
 {%- endfor %}
         ];
-        return stepList;
     }
 
     function getArithmetizationParams()
-    internal pure returns (uint256[{{arithmetization_params_len}}] memory) {
-        uint256[{{arithmetization_params_len}}] memory arithmetizationParams = [
+    internal pure returns (uint256[{{arithmetization_params_len}}] memory arithmetizationParams) {
+        arithmetizationParams = [
 {%- for param in arithmetization_params %}
             uint256({{param}}){% if not loop.last %}, {% endif %}
 {%- endfor %}
         ];
-        return (arithmetizationParams);
     }
 
     function getInitParams()
-    internal pure returns (uint256[] memory) {
+    internal pure returns (uint256[] memory initArgs) {
         uint256[{{D_omegas_len}}] memory dOmegas = getDOmegas();
         uint256[{{step_list_len}}] memory stepList = getStepList();
         uint256[{{arithmetization_params_len}}] memory arithmetizationParams = getArithmetizationParams();
 
-        uint256[] memory initArgs = new uint256[](
+        initArgs = new uint256[](
             6 // static fields: modulus to omega
             + (1 + dOmegas.length) // D_omegas.length + D_omegas
             + (1 + stepList.length) // step_list.length + step_list
@@ -83,43 +81,27 @@ library CircuitParams {
         for (uint idx = 0; idx < arithmetizationParams.length; idx++) {
             initArgs[curIndex++] = arithmetizationParams[idx];
         }
-
-        return (initArgs);
     }
 
-    function makeDyn1(int256 value) internal pure returns (int256[] memory) {
-        int256[] memory rslt = new int256[](1);
-        rslt[0] = value;
-        return rslt;
+{% for length in present_column_rotation_lengths %}
+    function dynArray{{length}}(
+{%- for i in range(length) %}
+        int256 value{{i}}{% if not loop.last %},{% endif %}
+{%- endfor %}
+    ) internal pure returns (int256[] memory result) {
+        result = new int256[]({{length}});
+{%- for i in range(length) %}
+        result[{{i}}] = value{{i}};
+{%- endfor %}
     }
-
-    function makeDyn2(int256 value1, int256 value2) internal pure returns (int256[] memory) {
-        int256[] memory rslt = new int256[](2);
-        rslt[0] = value1;
-        rslt[1] = value2;
-        return rslt;
-    }
-
-    function makeDyn3(int256 value1, int256 value2, int256 value3) internal pure returns (int256[] memory) {
-        int256[] memory rslt = new int256[](3);
-        rslt[0] = value1;
-        rslt[1] = value2;
-        rslt[2] = value3;
-        return rslt;
-    }
+{% endfor %}
 
     function getColumnRotations()
     internal pure returns (int256[][] memory) {
         int256[][] memory column_rotations = new int256[][]({{columns_rotations_len}});
         uint idx = 0;
-{%- for column_rotation in columns_rotations -%}
-    {% if column_rotation|length == 3 %}
-        column_rotations[idx++] = makeDyn3({{column_rotation|join(', ')}});
-    {%- elif column_rotation|length == 2 %}
-        column_rotations[idx++] = makeDyn2({{column_rotation|join(', ')}});
-    {%- elif column_rotation|length == 1 %}
-        column_rotations[idx++] = makeDyn1({{column_rotation[0]}});
-    {%- endif %}
+{%- for column_rotation in columns_rotations %}
+        column_rotations[idx++] = dynArray{{column_rotation|length}}({{column_rotation|join(', ')}});
 {%- endfor %}
         return column_rotations;
     }

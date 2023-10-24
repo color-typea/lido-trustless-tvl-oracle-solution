@@ -11,8 +11,8 @@ library CircuitParams {
     uint256 constant omega = 1052476823299314129969668407141491286911278219597830940957003018745899426804;
 
     function getDOmegas()
-    internal pure returns (uint256[17] memory) {
-        uint256[17] memory DOmegas = [
+    internal pure returns (uint256[17] memory DOmegas) {
+        DOmegas = [
             uint256(1052476823299314129969668407141491286911278219597830940957003018745899426804), 
             uint256(21090803083255360924969619711782040241928172562822879037017685322859036642027), 
             uint256(10988054172925167713694812535142550583545019937971378974362050426778203868934), 
@@ -31,11 +31,11 @@ library CircuitParams {
             uint256(199455130043951077247265858823823987229570523056509026484192158816218200659), 
             uint256(24760239192664116622385963963284001971067308018068707868888628426778644166363)
         ];
-        return (DOmegas);
     }
+
     function getStepList()
-    internal pure returns (uint256[17] memory) {
-        uint256[17] memory stepList = [
+    internal pure returns (uint256[17] memory stepList) {
+        stepList = [
             uint256(1), 
             uint256(1), 
             uint256(1), 
@@ -54,27 +54,25 @@ library CircuitParams {
             uint256(1), 
             uint256(1)
         ];
-        return stepList;
     }
 
     function getArithmetizationParams()
-    internal pure returns (uint256[4] memory) {
-        uint256[4] memory arithmetizationParams = [
+    internal pure returns (uint256[4] memory arithmetizationParams) {
+        arithmetizationParams = [
             uint256(15), 
             uint256(1), 
             uint256(5), 
             uint256(15)
         ];
-        return (arithmetizationParams);
     }
 
     function getInitParams()
-    internal pure returns (uint256[] memory) {
+    internal pure returns (uint256[] memory initArgs) {
         uint256[17] memory dOmegas = getDOmegas();
         uint256[17] memory stepList = getStepList();
         uint256[4] memory arithmetizationParams = getArithmetizationParams();
 
-        uint256[] memory initArgs = new uint256[](
+        initArgs = new uint256[](
             6 // static fields: modulus to omega
             + (1 + dOmegas.length) // D_omegas.length + D_omegas
             + (1 + stepList.length) // step_list.length + step_list
@@ -107,91 +105,88 @@ library CircuitParams {
         for (uint idx = 0; idx < arithmetizationParams.length; idx++) {
             initArgs[curIndex++] = arithmetizationParams[idx];
         }
-
-        return (initArgs);
     }
 
-    function makeDyn1(int256 value) internal pure returns (int256[] memory) {
-        int256[] memory rslt = new int256[](1);
-        rslt[0] = value;
-        return rslt;
+
+    function dynArray1(
+        int256 value0
+    ) internal pure returns (int256[] memory result) {
+        result = new int256[](1);
+        result[0] = value0;
     }
 
-    function makeDyn2(int256 value1, int256 value2) internal pure returns (int256[] memory) {
-        int256[] memory rslt = new int256[](2);
-        rslt[0] = value1;
-        rslt[1] = value2;
-        return rslt;
+    function dynArray3(
+        int256 value0,
+        int256 value1,
+        int256 value2
+    ) internal pure returns (int256[] memory result) {
+        result = new int256[](3);
+        result[0] = value0;
+        result[1] = value1;
+        result[2] = value2;
     }
 
-    function makeDyn3(int256 value1, int256 value2, int256 value3) internal pure returns (int256[] memory) {
-        int256[] memory rslt = new int256[](3);
-        rslt[0] = value1;
-        rslt[1] = value2;
-        rslt[2] = value3;
-        return rslt;
-    }
 
     function getColumnRotations()
     internal pure returns (int256[][] memory) {
         int256[][] memory column_rotations = new int256[][](56);
         uint idx = 0;
-        column_rotations[idx++] = makeDyn3(-1, 0, 1);
-        column_rotations[idx++] = makeDyn3(-1, 0, 1);
-        column_rotations[idx++] = makeDyn3(-1, 0, 1);
-        column_rotations[idx++] = makeDyn3(-1, 0, 1);
-        column_rotations[idx++] = makeDyn3(-1, 0, 1);
-        column_rotations[idx++] = makeDyn3(-1, 0, 1);
-        column_rotations[idx++] = makeDyn3(-1, 0, 1);
-        column_rotations[idx++] = makeDyn3(-1, 0, 1);
-        column_rotations[idx++] = makeDyn3(-1, 0, 1);
-        column_rotations[idx++] = makeDyn3(-1, 0, 1);
-        column_rotations[idx++] = makeDyn3(-1, 0, 1);
-        column_rotations[idx++] = makeDyn3(-1, 0, 1);
-        column_rotations[idx++] = makeDyn3(-1, 0, 1);
-        column_rotations[idx++] = makeDyn3(-1, 0, 1);
-        column_rotations[idx++] = makeDyn3(-1, 0, 1);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
-        column_rotations[idx++] = makeDyn1(0);
+        column_rotations[idx++] = dynArray3(-1, 0, 1);
+        column_rotations[idx++] = dynArray3(-1, 0, 1);
+        column_rotations[idx++] = dynArray3(-1, 0, 1);
+        column_rotations[idx++] = dynArray3(-1, 0, 1);
+        column_rotations[idx++] = dynArray3(-1, 0, 1);
+        column_rotations[idx++] = dynArray3(-1, 0, 1);
+        column_rotations[idx++] = dynArray3(-1, 0, 1);
+        column_rotations[idx++] = dynArray3(-1, 0, 1);
+        column_rotations[idx++] = dynArray3(-1, 0, 1);
+        column_rotations[idx++] = dynArray3(-1, 0, 1);
+        column_rotations[idx++] = dynArray3(-1, 0, 1);
+        column_rotations[idx++] = dynArray3(-1, 0, 1);
+        column_rotations[idx++] = dynArray3(-1, 0, 1);
+        column_rotations[idx++] = dynArray3(-1, 0, 1);
+        column_rotations[idx++] = dynArray3(-1, 0, 1);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
+        column_rotations[idx++] = dynArray1(0);
         return column_rotations;
     }
 }

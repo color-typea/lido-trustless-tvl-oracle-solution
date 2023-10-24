@@ -22,10 +22,11 @@ class TemplateInput:
     D_omegas: List[float]
     step_list: List[float]
     arithmetization_params: List[float]
-    columns_rotations: List[float]
+    columns_rotations: List[List[int]]
 
     @classmethod
     def read_from_circuit_params_json(cls, json_data):
+
         return cls(
             modulus = json_data['modulus'],
             omega=json_data['omega'],
@@ -37,11 +38,17 @@ class TemplateInput:
             max_degree = json_data['commitment_params_node']['max_degree'],
             lambdda = json_data['commitment_params_node']['lambda'],
             D_omegas = json_data['commitment_params_node']['D_omegas'],
-            step_list = json_data['commitment_params_node']['step_list'],
+            step_list = json_data['commitment_params_node']['step_list']
         )
 
+    def computed_values(self) -> dict[str, any]:
+        column_rotations_lengths = set(len(item) for item in self.columns_rotations)
+        return {
+            "present_column_rotation_lengths": column_rotations_lengths
+        }
+
     def to_template(self):
-        return dataclasses.asdict(self)
+        return dataclasses.asdict(self) | self.computed_values()
 
 
 class ArgumentParser(tap.TypedArgs):
