@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity >=0.8.4;
+pragma solidity 0.8.9;
 
 library CircuitParams {
     uint256 constant modulus = 28948022309329048855892746252171976963363056481941560715954676764349967630337;
     uint256 constant r = 17;
-    uint256 constant max_degree = 262143;
+    uint256 constant maxDegree = 262143;
     uint256 constant lambda = 2;
 
-    uint256 constant rows_amount = 262144;
+    uint256 constant rowsAmount = 262144;
     uint256 constant omega = 1052476823299314129969668407141491286911278219597830940957003018745899426804;
 
-    function get_D_omegas()
+    function getDOmegas()
     internal pure returns (uint256[17] memory) {
-        uint256[17] memory D_omegas = [
+        uint256[17] memory DOmegas = [
             uint256(1052476823299314129969668407141491286911278219597830940957003018745899426804), 
             uint256(21090803083255360924969619711782040241928172562822879037017685322859036642027), 
             uint256(10988054172925167713694812535142550583545019937971378974362050426778203868934), 
@@ -31,11 +31,11 @@ library CircuitParams {
             uint256(199455130043951077247265858823823987229570523056509026484192158816218200659), 
             uint256(24760239192664116622385963963284001971067308018068707868888628426778644166363)
         ];
-        return (D_omegas);
+        return (DOmegas);
     }
-    function get_step_list()
+    function getStepList()
     internal pure returns (uint256[17] memory) {
-        uint256[17] memory step_list = [
+        uint256[17] memory stepList = [
             uint256(1), 
             uint256(1), 
             uint256(1), 
@@ -54,66 +54,73 @@ library CircuitParams {
             uint256(1), 
             uint256(1)
         ];
-        return step_list;
+        return stepList;
     }
 
-    function get_arithmetization_params()
+    function getArithmetizationParams()
     internal pure returns (uint256[4] memory) {
-        uint256[4] memory arithmetization_params = [
+        uint256[4] memory arithmetizationParams = [
             uint256(15), 
             uint256(1), 
             uint256(5), 
             uint256(15)
         ];
-        return (arithmetization_params);
+        return (arithmetizationParams);
     }
 
-    function get_init_params()
-    internal pure returns (uint256[] memory init_params) {
-        uint256[17] memory d_omegas = get_D_omegas();
-        uint256[17] memory step_list = get_step_list();
-        uint256[4] memory arithmetization_params = get_arithmetization_params();
+    function getInitParams()
+    internal pure returns (uint256[] memory) {
+        uint256[17] memory dOmegas = getDOmegas();
+        uint256[17] memory stepList = getStepList();
+        uint256[4] memory arithmetizationParams = getArithmetizationParams();
 
-        uint256[] memory init_args = new uint256[](
+        uint256[] memory initArgs = new uint256[](
             6 // static fields: modulus to omega
-            + (1 + d_omegas.length) // D_omegas.length + D_omegas
-            + (1 + step_list.length) // step_list.length + step_list
-            + (1 + arithmetization_params.length) // arithmetization_params.length + arithmetization_params
+            + (1 + dOmegas.length) // D_omegas.length + D_omegas
+            + (1 + stepList.length) // step_list.length + step_list
+            + (1 + arithmetizationParams.length) // arithmetization_params.length + arithmetization_params
         );
 
-        uint cur_index = 0;
+        uint curIndex = 0;
 
-        init_args[cur_index++] = modulus;
-        init_args[cur_index++] = r;
-        init_args[cur_index++] = max_degree;
-        init_args[cur_index++] = lambda;
-        init_args[cur_index++] = rows_amount;
-        init_args[cur_index++] = omega;
+        initArgs[curIndex++] = modulus;
+        initArgs[curIndex++] = r;
+        initArgs[curIndex++] = maxDegree;
+        initArgs[curIndex++] = lambda;
+        initArgs[curIndex++] = rowsAmount;
+        initArgs[curIndex++] = omega;
 
         // Append D_omegas and length
-        init_args[cur_index++] = d_omegas.length;
-        for (uint idx = 0; idx < d_omegas.length; idx++) {
-            init_args[cur_index++] = d_omegas[idx];
+        initArgs[curIndex++] = dOmegas.length;
+        for (uint idx = 0; idx < dOmegas.length; idx++) {
+            initArgs[curIndex++] = dOmegas[idx];
         }
 
         // Append step_list and length
-        init_args[cur_index++] = step_list.length;
-        for (uint idx = 0; idx < step_list.length; idx++) {
-            init_args[cur_index++] = step_list[idx];
+        initArgs[curIndex++] = stepList.length;
+        for (uint idx = 0; idx < stepList.length; idx++) {
+            initArgs[curIndex++] = stepList[idx];
         }
 
         // Append arithmetization_params and length
-        init_args[cur_index++] = arithmetization_params.length;
-        for (uint idx = 0; idx < arithmetization_params.length; idx++) {
-            init_args[cur_index++] = arithmetization_params[idx];
+        initArgs[curIndex++] = arithmetizationParams.length;
+        for (uint idx = 0; idx < arithmetizationParams.length; idx++) {
+            initArgs[curIndex++] = arithmetizationParams[idx];
         }
 
-        return (init_args);
+        return (initArgs);
     }
 
     function makeDyn1(int256 value) internal pure returns (int256[] memory) {
         int256[] memory rslt = new int256[](1);
         rslt[0] = value;
+        return rslt;
+    }
+
+    function makeDyn2(int256 value1, int256 value2) internal pure returns (int256[] memory) {
+        int256[] memory rslt = new int256[](2);
+        rslt[0] = value1;
+        rslt[1] = value2;
         return rslt;
     }
 
@@ -125,7 +132,7 @@ library CircuitParams {
         return rslt;
     }
 
-    function get_column_rotations()
+    function getColumnRotations()
     internal pure returns (int256[][] memory) {
         int256[][] memory column_rotations = new int256[][](56);
         uint idx = 0;

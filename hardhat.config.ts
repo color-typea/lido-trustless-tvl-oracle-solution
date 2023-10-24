@@ -34,7 +34,7 @@ const config: HardhatUserConfig = {
   defaultNetwork: DEFAULT_NETWORK,
   networks: networks,
   solidity: {
-    version: "0.8.19",
+    version: "0.8.9",
     settings: {
       optimizer: {
         enabled: true,
