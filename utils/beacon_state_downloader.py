@@ -269,6 +269,10 @@ def load_most_recent_frame(args):
     if args.sleep:
         put_to_sleep()
 
+def load_finalized(args):
+    loader = BeaconStateLoader(LOADER_URL)
+    loader.load('finalized')
+
 
 def load_continuous(args):
     logging.info(f"Continuous loading with {args.interval} interval and {args.limit} limit")
@@ -324,6 +328,9 @@ if __name__ == "__main__":
 
     frame = subparsers.add_parser("frame")
     frame.set_defaults(func=load_most_recent_frame)
+
+    frame = subparsers.add_parser("finalized")
+    frame.set_defaults(func=load_finalized)
 
     single = subparsers.add_parser("single")
     single.add_argument("--slot", type=int, required=True)
